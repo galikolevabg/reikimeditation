@@ -82,6 +82,7 @@ const Index = () => {
       {currentScreen === 'meditation' && (
         <MeditationScreen
           settings={sessionSettings}
+          selectedMusic={selectedMusic}
           onComplete={handleMeditationComplete}
           onEnd={handleMeditationEnd}
         />
