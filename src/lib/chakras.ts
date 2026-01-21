@@ -89,6 +89,7 @@ export const musicTracks = [
     nameBg: 'Амбиент медитация',
     description: 'Soft, flowing ambient soundscape',
     icon: '🎵',
+    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/track/VItecMwnNc592HJ22i&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
   },
   {
     id: 'nature',
@@ -96,6 +97,7 @@ export const musicTracks = [
     nameBg: 'Звуци от природата',
     description: 'Gentle rain and forest ambiance',
     icon: '🌿',
+    soundcloudUrl: null,
   },
   {
     id: 'frequencies',
@@ -103,6 +105,7 @@ export const musicTracks = [
     nameBg: 'Лечебни честоти',
     description: '528Hz Solfeggio tones',
     icon: '✨',
+    soundcloudUrl: null,
   },
   {
     id: 'silence',
@@ -110,5 +113,6 @@ export const musicTracks = [
     nameBg: 'Тишина',
     description: 'Meditate in peaceful silence',
     icon: '🤫',
+    soundcloudUrl: null,
   },
 ];

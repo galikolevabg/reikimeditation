@@ -5,15 +5,17 @@ import { ProgressRing } from '../ProgressRing';
 import { SacredGeometry } from '../SacredGeometry';
 import { useMeditationTimer } from '@/hooks/useMeditationTimer';
 import { SessionSettings } from './SetupScreen';
+import { musicTracks } from '@/lib/chakras';
 import { Pause, Play, X } from 'lucide-react';
 
 interface MeditationScreenProps {
   settings: SessionSettings;
+  selectedMusic: string;
   onComplete: () => void;
   onEnd: () => void;
 }
 
-export function MeditationScreen({ settings, onComplete, onEnd }: MeditationScreenProps) {
+export function MeditationScreen({ settings, selectedMusic, onComplete, onEnd }: MeditationScreenProps) {
   const {
     isActive,
     isPaused,
@@ -32,6 +34,8 @@ export function MeditationScreen({ settings, onComplete, onEnd }: MeditationScre
     totalDuration: settings.totalDuration,
     chakraDurations: settings.chakraDurations,
   });
+
+  const currentTrack = musicTracks.find(t => t.id === selectedMusic);
 
   useEffect(() => {
     start();
@@ -61,6 +65,20 @@ export function MeditationScreen({ settings, onComplete, onEnd }: MeditationScre
         background: `radial-gradient(ellipse at center, ${currentChakra.color}15 0%, hsl(240, 30%, 8%) 70%)`,
       }}
     >
+      {/* SoundCloud audio player - hidden but plays audio */}
+      {currentTrack?.soundcloudUrl && (
+        <iframe
+          className="absolute opacity-0 pointer-events-none"
+          width="1"
+          height="1"
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          src={currentTrack.soundcloudUrl}
+          title="Meditation Music"
+        />
+      )}
+      
       {/* Sacred geometry background */}
       <SacredGeometry className="absolute w-[800px] h-[800px] text-foreground animate-spin-slow" />
       
