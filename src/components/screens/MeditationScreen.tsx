@@ -65,18 +65,20 @@ export function MeditationScreen({ settings, selectedMusic, onComplete, onEnd }:
         background: `radial-gradient(ellipse at center, ${currentChakra.color}15 0%, hsl(240, 30%, 8%) 70%)`,
       }}
     >
-      {/* SoundCloud audio player - hidden but plays audio */}
+      {/* SoundCloud audio player - visible at bottom */}
       {currentTrack?.soundcloudUrl && (
-        <iframe
-          className="absolute opacity-0 pointer-events-none"
-          width="1"
-          height="1"
-          scrolling="no"
-          frameBorder="no"
-          allow="autoplay"
-          src={currentTrack.soundcloudUrl}
-          title="Meditation Music"
-        />
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-t border-white/10 p-3">
+          <iframe
+            className="w-full rounded-lg"
+            width="100%"
+            height="80"
+            scrolling="no"
+            frameBorder="no"
+            allow="autoplay"
+            src={currentTrack.soundcloudUrl}
+            title="Meditation Music"
+          />
+        </div>
       )}
       
       {/* Sacred geometry background */}
