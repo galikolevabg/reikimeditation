@@ -1,21 +1,28 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChakraOrb } from '../ChakraOrb';
 import { ChakraSpine } from '../ChakraSpine';
 import { ProgressRing } from '../ProgressRing';
 import { SacredGeometry } from '../SacredGeometry';
 import { useMeditationTimer } from '@/hooks/useMeditationTimer';
 import { SessionSettings } from './SetupScreen';
-import { musicTracks } from '@/lib/chakras';
-import { Pause, Play, X } from 'lucide-react';
+import { musicTracks, transitionSounds } from '@/lib/chakras';
+import { Pause, Play, X, Volume2, VolumeX } from 'lucide-react';
 
 interface MeditationScreenProps {
   settings: SessionSettings;
   selectedMusic: string;
+  selectedTransition: string;
   onComplete: () => void;
   onEnd: () => void;
 }
 
-export function MeditationScreen({ settings, selectedMusic, onComplete, onEnd }: MeditationScreenProps) {
+export function MeditationScreen({ 
+  settings, 
+  selectedMusic, 
+  selectedTransition,
+  onComplete, 
+  onEnd 
+}: MeditationScreenProps) {
   const {
     isActive,
     isPaused,
@@ -36,16 +43,52 @@ export function MeditationScreen({ settings, selectedMusic, onComplete, onEnd }:
   });
 
   const currentTrack = musicTracks.find(t => t.id === selectedMusic);
+  const transitionSound = transitionSounds.find(t => t.id === selectedTransition);
+  
+  const musicIframeRef = useRef<HTMLIFrameElement>(null);
+  const transitionIframeRef = useRef<HTMLIFrameElement>(null);
+  const prevChakraIndex = useRef(currentChakraIndex);
+  const [isMuted, setIsMuted] = useState(false);
 
+  // Start meditation on mount
   useEffect(() => {
     start();
   }, [start]);
 
+  // Handle completion
   useEffect(() => {
     if (isComplete) {
       onComplete();
     }
   }, [isComplete, onComplete]);
+
+  // Control music playback based on pause state
+  useEffect(() => {
+    if (musicIframeRef.current && currentTrack?.soundcloudUrl) {
+      const widget = musicIframeRef.current.contentWindow;
+      if (widget) {
+        if (isPaused || isMuted) {
+          widget.postMessage('{"method":"pause"}', '*');
+        } else if (isActive) {
+          widget.postMessage('{"method":"play"}', '*');
+        }
+      }
+    }
+  }, [isPaused, isActive, isMuted, currentTrack]);
+
+  // Play transition sound on chakra change
+  useEffect(() => {
+    if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
+      if (transitionIframeRef.current && transitionSound?.soundcloudUrl && !isMuted) {
+        const widget = transitionIframeRef.current.contentWindow;
+        if (widget) {
+          widget.postMessage('{"method":"seekTo","value":0}', '*');
+          widget.postMessage('{"method":"play"}', '*');
+        }
+      }
+    }
+    prevChakraIndex.current = currentChakraIndex;
+  }, [currentChakraIndex, transitionSound, isMuted]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -58,27 +101,44 @@ export function MeditationScreen({ settings, selectedMusic, onComplete, onEnd }:
     onEnd();
   };
 
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-center p-6 pb-32 relative overflow-hidden transition-colors duration-1000"
+      className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden transition-colors duration-1000"
       style={{
         background: `radial-gradient(ellipse at center, ${currentChakra.color}15 0%, hsl(240, 30%, 8%) 70%)`,
       }}
     >
-      {/* SoundCloud audio player - visible at bottom */}
+      {/* Hidden SoundCloud players for audio control */}
       {currentTrack?.soundcloudUrl && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-sm border-t border-white/10 p-2">
-          <iframe
-            className="w-full rounded-lg"
-            width="100%"
-            height="60"
-            scrolling="no"
-            frameBorder="no"
-            allow="autoplay"
-            src={currentTrack.soundcloudUrl}
-            title="Meditation Music"
-          />
-        </div>
+        <iframe
+          ref={musicIframeRef}
+          className="hidden"
+          width="100%"
+          height="1"
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          src={currentTrack.soundcloudUrl}
+          title="Meditation Music"
+        />
+      )}
+      
+      {transitionSound?.soundcloudUrl && (
+        <iframe
+          ref={transitionIframeRef}
+          className="hidden"
+          width="100%"
+          height="1"
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          src={transitionSound.soundcloudUrl.replace('auto_play=true', 'auto_play=false')}
+          title="Transition Sound"
+        />
       )}
       
       {/* Sacred geometry background */}
@@ -157,6 +217,20 @@ export function MeditationScreen({ settings, selectedMusic, onComplete, onEnd }:
         
         {/* Controls */}
         <div className="mt-10 flex items-center gap-4">
+          {/* Mute button */}
+          <button
+            onClick={toggleMute}
+            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 
+                       flex items-center justify-center transition-all hover:bg-white/20"
+          >
+            {isMuted ? (
+              <VolumeX className="w-5 h-5" />
+            ) : (
+              <Volume2 className="w-5 h-5" />
+            )}
+          </button>
+
+          {/* Play/Pause button */}
           <button
             onClick={isPaused ? resume : pause}
             className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 

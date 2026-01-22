@@ -108,11 +108,50 @@ export const musicTracks = [
     soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1201113973&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
   },
   {
+    id: 'cleanse',
+    name: '396Hz Cleanse Energy',
+    nameBg: '396Hz Пречистване',
+    description: 'Cleanse negative energy, positive vibration',
+    icon: '🔮',
+    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1048604626&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+  },
+  {
     id: 'silence',
     name: 'Silence',
     nameBg: 'Тишина',
     description: 'Meditate in peaceful silence',
     icon: '🤫',
+    soundcloudUrl: null,
+  },
+];
+
+export const transitionSounds = [
+  {
+    id: 'tibetan-small',
+    name: 'Small Tibetan Bowl',
+    nameBg: 'Малка тибетска купа',
+    icon: '🔔',
+    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/837598315&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+  },
+  {
+    id: 'white-tara',
+    name: 'White Tara Bowl',
+    nameBg: 'Бяла Тара купа',
+    icon: '🎐',
+    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1046631682&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+  },
+  {
+    id: 'singing-bowl',
+    name: 'Singing Bowl Hit',
+    nameBg: 'Пеещa купа',
+    icon: '🔊',
+    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/77199537&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+  },
+  {
+    id: 'none',
+    name: 'No Sound',
+    nameBg: 'Без звук',
+    icon: '🔇',
     soundcloudUrl: null,
   },
 ];
