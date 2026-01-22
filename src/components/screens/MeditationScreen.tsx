@@ -76,19 +76,33 @@ export function MeditationScreen({
     }
   }, [isPaused, isActive, isMuted, currentTrack]);
 
-  // Play transition sound on chakra change
+  // Play transition sound on chakra change, then resume music
   useEffect(() => {
     if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
+      // Play transition sound
       if (transitionIframeRef.current && transitionSound?.soundcloudUrl && !isMuted) {
-        const widget = transitionIframeRef.current.contentWindow;
-        if (widget) {
-          widget.postMessage('{"method":"seekTo","value":0}', '*');
-          widget.postMessage('{"method":"play"}', '*');
+        const transitionWidget = transitionIframeRef.current.contentWindow;
+        if (transitionWidget) {
+          transitionWidget.postMessage('{"method":"seekTo","value":0}', '*');
+          transitionWidget.postMessage('{"method":"play"}', '*');
+          
+          // Stop transition sound after 3 seconds and resume main music
+          setTimeout(() => {
+            transitionWidget.postMessage('{"method":"pause"}', '*');
+            
+            // Resume main music if not paused
+            if (musicIframeRef.current && currentTrack?.soundcloudUrl && !isMuted && isActive && !isPaused) {
+              const musicWidget = musicIframeRef.current.contentWindow;
+              if (musicWidget) {
+                musicWidget.postMessage('{"method":"play"}', '*');
+              }
+            }
+          }, 3000);
         }
       }
     }
     prevChakraIndex.current = currentChakraIndex;
-  }, [currentChakraIndex, transitionSound, isMuted]);
+  }, [currentChakraIndex, transitionSound, isMuted, currentTrack, isActive, isPaused]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
