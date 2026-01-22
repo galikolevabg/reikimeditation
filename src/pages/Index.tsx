@@ -18,6 +18,7 @@ const Index = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [sessionSettings, setSessionSettings] = useState<SessionSettings>(defaultSettings);
   const [selectedMusic, setSelectedMusic] = useState<string>('ambient');
+  const [selectedTransition, setSelectedTransition] = useState<string>('tibetan-small');
 
   const handleStartMeditation = useCallback(() => {
     // Quick start with default settings
@@ -34,8 +35,9 @@ const Index = () => {
     setCurrentScreen('music');
   }, []);
 
-  const handleMusicSelect = useCallback((musicId: string) => {
+  const handleMusicSelect = useCallback((musicId: string, transitionSoundId: string) => {
     setSelectedMusic(musicId);
+    setSelectedTransition(transitionSoundId);
     setCurrentScreen('meditation');
   }, []);
 
@@ -83,6 +85,7 @@ const Index = () => {
         <MeditationScreen
           settings={sessionSettings}
           selectedMusic={selectedMusic}
+          selectedTransition={selectedTransition}
           onComplete={handleMeditationComplete}
           onEnd={handleMeditationEnd}
         />
