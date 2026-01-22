@@ -60,18 +60,18 @@ export function MeditationScreen({ settings, selectedMusic, onComplete, onEnd }:
 
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden transition-colors duration-1000"
+      className="min-h-screen flex flex-col items-center justify-center p-6 pb-32 relative overflow-hidden transition-colors duration-1000"
       style={{
         background: `radial-gradient(ellipse at center, ${currentChakra.color}15 0%, hsl(240, 30%, 8%) 70%)`,
       }}
     >
       {/* SoundCloud audio player - visible at bottom */}
       {currentTrack?.soundcloudUrl && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-t border-white/10 p-3">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-sm border-t border-white/10 p-2">
           <iframe
             className="w-full rounded-lg"
             width="100%"
-            height="80"
+            height="60"
             scrolling="no"
             frameBorder="no"
             allow="autoplay"

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { musicTracks } from '@/lib/chakras';
-import { ArrowLeft, Check, Play, Volume2 } from 'lucide-react';
+import { ArrowLeft, Check, Play, Pause, Volume2 } from 'lucide-react';
 
 interface MusicScreenProps {
   onBack: () => void;
@@ -16,10 +16,10 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
       setPreviewingMusic(null);
     } else {
       setPreviewingMusic(musicId);
-      // In a real app, this would play audio
-      setTimeout(() => setPreviewingMusic(null), 3000);
     }
   };
+
+  const previewTrack = previewingMusic ? musicTracks.find(t => t.id === previewingMusic) : null;
 
   return (
     <div className="cosmic-bg min-h-screen flex flex-col p-6">
@@ -34,7 +34,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
         <h1 className="font-display text-2xl">Choose Music</h1>
       </header>
 
-      <div className="flex-1 max-w-md mx-auto w-full">
+      <div className="flex-1 max-w-md mx-auto w-full pb-32">
         {/* Music Icon */}
         <div className="flex justify-center mb-8">
           <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center animate-breathe">
@@ -63,7 +63,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
               </div>
 
               <div className="flex items-center gap-2">
-                {track.id !== 'silence' && (
+                {track.soundcloudUrl && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -75,7 +75,11 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
                         : 'bg-white/10 hover:bg-white/20'
                       }`}
                   >
-                    <Play className="w-4 h-4" />
+                    {previewingMusic === track.id ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
                   </button>
                 )}
                 
@@ -101,6 +105,33 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           Find a comfortable position and prepare to relax.
         </p>
       </div>
+
+      {/* Music Preview Player */}
+      {previewTrack?.soundcloudUrl && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-white/10 p-3">
+          <div className="max-w-md mx-auto">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Preview: {previewTrack.name}</span>
+              <button 
+                onClick={() => setPreviewingMusic(null)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
+            </div>
+            <iframe
+              className="w-full rounded-lg"
+              width="100%"
+              height="80"
+              scrolling="no"
+              frameBorder="no"
+              allow="autoplay"
+              src={previewTrack.soundcloudUrl}
+              title="Music Preview"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
