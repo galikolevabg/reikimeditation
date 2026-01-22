@@ -49,11 +49,42 @@ export function MeditationScreen({
   const transitionIframeRef = useRef<HTMLIFrameElement>(null);
   const prevChakraIndex = useRef(currentChakraIndex);
   const [isMuted, setIsMuted] = useState(false);
+  const audioContextInitialized = useRef(false);
 
-  // Start meditation on mount
+  /**
+   * Initialize AudioContext on meditation start
+   * iOS and Android require user interaction to start audio
+   * The start() call from useMeditationTimer is triggered by user button click
+   */
   useEffect(() => {
-    start();
-  }, [start]);
+    if (!audioContextInitialized.current && isActive) {
+      initializeAudioContext();
+      audioContextInitialized.current = true;
+    }
+  }, [isActive]);
+
+  /**
+   * Initialize AudioContext for mobile compatibility
+   * Must be called during/after user interaction
+   */
+  const initializeAudioContext = async () => {
+    try {
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+      
+      if (AudioContextClass) {
+        const audioContext = new AudioContextClass();
+        
+        // Resume if suspended (required on iOS/Android)
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+        
+        console.log('MeditationScreen AudioContext initialized:', audioContext.state);
+      }
+    } catch (error) {
+      console.warn('AudioContext initialization in MeditationScreen:', error);
+    }
+  };
 
   // Handle completion
   useEffect(() => {
@@ -63,13 +94,16 @@ export function MeditationScreen({
   }, [isComplete, onComplete]);
 
   // Control music playback based on pause state
+  // Uses postMessage to communicate with SoundCloud iframe - mobile safe
   useEffect(() => {
     if (musicIframeRef.current && currentTrack?.soundcloudUrl) {
       const widget = musicIframeRef.current.contentWindow;
       if (widget) {
         if (isPaused || isMuted) {
+          // Pause music when meditation is paused or muted
           widget.postMessage('{"method":"pause"}', '*');
         } else if (isActive) {
+          // Play music when meditation is active and not paused
           widget.postMessage('{"method":"play"}', '*');
         }
       }
@@ -77,12 +111,14 @@ export function MeditationScreen({
   }, [isPaused, isActive, isMuted, currentTrack]);
 
   // Play transition sound on chakra change, then resume music
+  // Uses postMessage API - works correctly on mobile
   useEffect(() => {
     if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
       // Play transition sound
       if (transitionIframeRef.current && transitionSound?.soundcloudUrl && !isMuted) {
         const transitionWidget = transitionIframeRef.current.contentWindow;
         if (transitionWidget) {
+          // Reset and play transition sound
           transitionWidget.postMessage('{"method":"seekTo","value":0}', '*');
           transitionWidget.postMessage('{"method":"play"}', '*');
           
@@ -126,7 +162,17 @@ export function MeditationScreen({
         background: `radial-gradient(ellipse at center, ${currentChakra.color}15 0%, hsl(240, 30%, 8%) 70%)`,
       }}
     >
-      {/* Hidden SoundCloud players for audio control */}
+      {/* 
+        Hidden SoundCloud players for audio control
+        
+        MOBILE AUDIO NOTES:
+        - These iframes are controlled via postMessage API (not direct autoplay)
+        - The allow="autoplay" attribute is set, but audio only plays after:
+          1. AudioContext is initialized on user interaction
+          2. postMessage("play") is sent to the iframe
+        - This respects iOS/Android browser audio restrictions
+        - Audio starts only when meditation is active and not paused
+      */}
       {currentTrack?.soundcloudUrl && (
         <iframe
           ref={musicIframeRef}

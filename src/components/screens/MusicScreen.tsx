@@ -13,11 +13,49 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
   const [previewingMusic, setPreviewingMusic] = useState<string | null>(null);
   const [previewingTransition, setPreviewingTransition] = useState<string | null>(null);
 
+  /**
+   * Initialize AudioContext on user interaction (required for mobile)
+   * iOS and Android require explicit user gesture to enable audio playback
+   */
+  const initializeAudioOnUserGesture = async () => {
+    try {
+      // Use standard AudioContext or webkit version for iOS compatibility
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+      
+      if (AudioContextClass) {
+        const audioContext = new AudioContextClass();
+        
+        // Resume if suspended (required on iOS/Android after user gesture)
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+        
+        console.log('AudioContext initialized:', audioContext.state);
+      }
+    } catch (error) {
+      console.warn('AudioContext initialization warning (this is normal on some browsers):', error);
+    }
+  };
+
+  /**
+   * Handle Begin Meditation button click
+   * This triggers audio initialization before meditation starts
+   */
+  const handleBeginMeditation = async () => {
+    // Initialize audio on this user interaction before starting meditation
+    await initializeAudioOnUserGesture();
+    
+    // Now proceed with meditation
+    onStart(selectedMusic, selectedTransition);
+  };
+
   const handlePreview = (musicId: string) => {
     setPreviewingTransition(null);
     if (previewingMusic === musicId) {
       setPreviewingMusic(null);
     } else {
+      // Initialize audio context on preview interaction as well
+      initializeAudioOnUserGesture();
       setPreviewingMusic(musicId);
     }
   };
@@ -27,6 +65,8 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
     if (previewingTransition === soundId) {
       setPreviewingTransition(null);
     } else {
+      // Initialize audio context on preview interaction as well
+      initializeAudioOnUserGesture();
       setPreviewingTransition(soundId);
     }
   };
@@ -171,7 +211,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
 
         {/* Start Button */}
         <button
-          onClick={() => onStart(selectedMusic, selectedTransition)}
+          onClick={handleBeginMeditation}
           className="btn-meditation w-full"
         >
           Begin Meditation
