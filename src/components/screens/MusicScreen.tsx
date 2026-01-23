@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { musicTracks, transitionSounds } from '@/lib/chakras';
 import { ArrowLeft, Check, Play, Pause, Volume2, Bell, Square } from 'lucide-react';
+import { useAudioContext } from '@/hooks/useAudioContext';
 
 interface MusicScreenProps {
   onBack: () => void;
@@ -12,13 +13,30 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
   const [selectedTransition, setSelectedTransition] = useState<string>('tibetan-small');
   const [previewingMusic, setPreviewingMusic] = useState<string | null>(null);
   const [previewingTransition, setPreviewingTransition] = useState<string | null>(null);
+
+  const { resumeAudioContext } = useAudioContext();
   
   const musicPreviewRef = useRef<HTMLIFrameElement>(null);
   const transitionPreviewRef = useRef<HTMLIFrameElement>(null);
 
-  const handleMusicSelect = (musicId: string) => {
+  const getControlledSoundCloudUrl = (url: string) => {
+    // Ensure widget can be controlled via postMessage and does not attempt autoplay by itself.
+    let next = url;
+
+    if (next.includes('auto_play=true')) next = next.replace('auto_play=true', 'auto_play=false');
+    if (!next.includes('auto_play=')) next += (next.includes('?') ? '&' : '?') + 'auto_play=false';
+
+    if (!next.includes('enable_api=true')) next += '&enable_api=true';
+    return next;
+  };
+
+  const handleMusicSelect = async (musicId: string) => {
     // Stop any current preview
     stopAllPreviews();
+
+    // Unlock audio on mobile inside the same user gesture
+    await resumeAudioContext();
+
     setSelectedMusic(musicId);
     
     // Auto-preview selected music
@@ -28,9 +46,13 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
     }
   };
 
-  const handleTransitionSelect = (soundId: string) => {
+  const handleTransitionSelect = async (soundId: string) => {
     // Stop any current preview
     stopAllPreviews();
+
+    // Unlock audio on mobile inside the same user gesture
+    await resumeAudioContext();
+
     setSelectedTransition(soundId);
     
     // Auto-preview selected transition
@@ -72,7 +94,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           scrolling="no"
           frameBorder="no"
           allow="autoplay"
-          src={previewTrack.soundcloudUrl}
+          src={getControlledSoundCloudUrl(previewTrack.soundcloudUrl)}
           title="Music Preview"
           onLoad={() => {
             // Auto-play when loaded
@@ -94,7 +116,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           scrolling="no"
           frameBorder="no"
           allow="autoplay"
-          src={previewTransitionSound.soundcloudUrl}
+          src={getControlledSoundCloudUrl(previewTransitionSound.soundcloudUrl)}
           title="Transition Preview"
           onLoad={() => {
             // Auto-play when loaded
