@@ -43,6 +43,17 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
     const track = musicTracks.find(t => t.id === musicId);
     if (track?.soundcloudUrl) {
       setPreviewingMusic(musicId);
+      // Force immediate play on iOS - must happen within user interaction
+      setTimeout(() => {
+        if (musicPreviewRef.current?.contentWindow) {
+          // Send play command immediately within user gesture context
+          musicPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+          // Retry after short delay
+          setTimeout(() => {
+            musicPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+          }, 100);
+        }
+      }, 50);
     }
   };
 
@@ -59,6 +70,17 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
     const sound = transitionSounds.find(s => s.id === soundId);
     if (sound?.soundcloudUrl) {
       setPreviewingTransition(soundId);
+      // Force immediate play on iOS - must happen within user interaction
+      setTimeout(() => {
+        if (transitionPreviewRef.current?.contentWindow) {
+          // Send play command immediately within user gesture context
+          transitionPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+          // Retry after short delay
+          setTimeout(() => {
+            transitionPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+          }, 100);
+        }
+      }, 50);
     }
   };
 
@@ -74,8 +96,10 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
     }
   };
 
-  const handleBeginMeditation = () => {
+  const handleBeginMeditation = async () => {
     stopAllPreviews();
+    // Critical: Resume AudioContext on iOS before starting meditation
+    await resumeAudioContext();
     onStart(selectedMusic, selectedTransition);
   };
 

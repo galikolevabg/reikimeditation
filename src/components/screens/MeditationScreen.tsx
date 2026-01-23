@@ -7,6 +7,7 @@ import { useMeditationTimer } from '@/hooks/useMeditationTimer';
 import { SessionSettings } from './SetupScreen';
 import { musicTracks, transitionSounds } from '@/lib/chakras';
 import { Pause, Play, X, Volume2, VolumeX } from 'lucide-react';
+import { useAudioContext } from '@/hooks/useAudioContext';
 
 interface MeditationScreenProps {
   settings: SessionSettings;
@@ -45,6 +46,8 @@ export function MeditationScreen({
   const currentTrack = musicTracks.find(t => t.id === selectedMusic);
   const transitionSound = transitionSounds.find(t => t.id === selectedTransition);
   
+  const { resumeAudioContext } = useAudioContext();
+  
   const musicIframeRef = useRef<HTMLIFrameElement>(null);
   const transitionIframeRef = useRef<HTMLIFrameElement>(null);
   const prevChakraIndex = useRef(currentChakraIndex);
@@ -69,24 +72,28 @@ export function MeditationScreen({
 
   // Auto-start meditation when component mounts
   useEffect(() => {
-    start();
-  }, [start]);
+    // Critical: Initialize AudioContext immediately for iOS
+    resumeAudioContext().then(() => {
+      start();
+    });
+  }, [start, resumeAudioContext]);
 
   // Start music when iframe is loaded and meditation is active
   const handleIframeLoad = () => {
     iframeLoaded.current = true;
-    // Multiple attempts to start audio on mobile
-    const tryPlay = (attempt: number) => {
-      if (attempt > 3) return;
+    // Immediately try to play - critical for iOS
+    if (musicIframeRef.current?.contentWindow && isActive && !isPaused && !isMuted) {
+      musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+    }
+    // Multiple aggressive retry attempts for iOS
+    const delays = [100, 300, 500, 800, 1200, 1800];
+    delays.forEach(delay => {
       setTimeout(() => {
         if (musicIframeRef.current?.contentWindow && isActive && !isPaused && !isMuted) {
           musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-          // Try again if needed
-          tryPlay(attempt + 1);
         }
-      }, 500 * attempt);
-    };
-    tryPlay(1);
+      }, delay);
+    });
   };
 
   // Control music playback based on pause state
@@ -108,10 +115,12 @@ export function MeditationScreen({
           musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
         }
       };
-      // Multiple attempts for mobile
+      // Immediate and multiple aggressive attempts for iOS
       tryPlay();
-      setTimeout(tryPlay, 1000);
-      setTimeout(tryPlay, 2000);
+      const delays = [50, 150, 300, 600, 1000, 1500, 2000];
+      delays.forEach(delay => {
+        setTimeout(tryPlay, delay);
+      });
     }
   }, [isActive, isPaused, isMuted, currentTrack]);
 
@@ -152,6 +161,18 @@ export function MeditationScreen({
 
   const toggleMute = () => {
     setIsMuted(!isMuted);
+  };
+
+  const handleResume = async () => {
+    // Critical: Resume AudioContext on iOS before resuming
+    await resumeAudioContext();
+    resume();
+    // Force play after resume
+    setTimeout(() => {
+      if (musicIframeRef.current?.contentWindow && !isMuted) {
+        musicIframeRef.current.contentWindow.postMessage('{\"method\":\"play\"}', '*');
+      }
+    }, 50);
   };
 
   return (
@@ -297,7 +318,7 @@ export function MeditationScreen({
 
           {/* Play/Pause button */}
           <button
-            onClick={isPaused ? resume : pause}
+            onClick={isPaused ? handleResume : pause}
             className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 
                        flex items-center justify-center transition-all hover:bg-white/20 hover:scale-105"
           >
@@ -327,7 +348,7 @@ export function MeditationScreen({
             <p className="font-display text-3xl mb-4">Paused</p>
             <p className="text-muted-foreground mb-6">Take your time. Resume when ready.</p>
             <button
-              onClick={resume}
+              onClick={handleResume}
               className="btn-meditation"
             >
               <Play className="w-5 h-5 mr-2 inline" />
