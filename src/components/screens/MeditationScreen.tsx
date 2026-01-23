@@ -51,6 +51,15 @@ export function MeditationScreen({
   const [isMuted, setIsMuted] = useState(false);
   const iframeLoaded = useRef(false);
 
+  const getControlledSoundCloudUrl = (url: string) => {
+    // Ensure widget supports postMessage control and doesn't try to autoplay on its own.
+    let next = url;
+    if (next.includes('auto_play=true')) next = next.replace('auto_play=true', 'auto_play=false');
+    if (!next.includes('auto_play=')) next += (next.includes('?') ? '&' : '?') + 'auto_play=false';
+    if (!next.includes('enable_api=true')) next += '&enable_api=true';
+    return next;
+  };
+
   // Handle completion
   useEffect(() => {
     if (isComplete) {
@@ -172,7 +181,7 @@ export function MeditationScreen({
           scrolling="no"
           frameBorder="no"
           allow="autoplay"
-          src={currentTrack.soundcloudUrl}
+          src={getControlledSoundCloudUrl(currentTrack.soundcloudUrl)}
           title="Meditation Music"
           onLoad={handleIframeLoad}
         />
@@ -187,7 +196,7 @@ export function MeditationScreen({
           scrolling="no"
           frameBorder="no"
           allow="autoplay"
-          src={transitionSound.soundcloudUrl.replace('auto_play=true', 'auto_play=false')}
+          src={getControlledSoundCloudUrl(transitionSound.soundcloudUrl)}
           title="Transition Sound"
         />
       )}

@@ -5,6 +5,7 @@ import { MusicScreen } from '@/components/screens/MusicScreen';
 import { MeditationScreen } from '@/components/screens/MeditationScreen';
 import { CompleteScreen } from '@/components/screens/CompleteScreen';
 import { chakras } from '@/lib/chakras';
+import { useAudioContext } from '@/hooks/useAudioContext';
 
 type Screen = 'landing' | 'setup' | 'music' | 'meditation' | 'complete';
 
@@ -19,6 +20,7 @@ const Index = () => {
   const [sessionSettings, setSessionSettings] = useState<SessionSettings>(defaultSettings);
   const [selectedMusic, setSelectedMusic] = useState<string>('ambient');
   const [selectedTransition, setSelectedTransition] = useState<string>('tibetan-small');
+  const { initializeAudioContext } = useAudioContext();
 
   const handleStartMeditation = useCallback(() => {
     // Quick start with default settings
@@ -35,11 +37,14 @@ const Index = () => {
     setCurrentScreen('music');
   }, []);
 
-  const handleMusicSelect = useCallback((musicId: string, transitionSoundId: string) => {
+  const handleMusicSelect = useCallback(async (musicId: string, transitionSoundId: string) => {
+    // IMPORTANT (mobile): unlock audio inside the same user gesture (Begin Meditation)
+    await initializeAudioContext();
+
     setSelectedMusic(musicId);
     setSelectedTransition(transitionSoundId);
     setCurrentScreen('meditation');
-  }, []);
+  }, [initializeAudioContext]);
 
   const handleMeditationComplete = useCallback(() => {
     setCurrentScreen('complete');
