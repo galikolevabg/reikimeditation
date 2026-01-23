@@ -49,42 +49,7 @@ export function MeditationScreen({
   const transitionIframeRef = useRef<HTMLIFrameElement>(null);
   const prevChakraIndex = useRef(currentChakraIndex);
   const [isMuted, setIsMuted] = useState(false);
-  const audioContextInitialized = useRef(false);
-
-  /**
-   * Initialize AudioContext on meditation start
-   * iOS and Android require user interaction to start audio
-   * The start() call from useMeditationTimer is triggered by user button click
-   */
-  useEffect(() => {
-    if (!audioContextInitialized.current && isActive) {
-      initializeAudioContext();
-      audioContextInitialized.current = true;
-    }
-  }, [isActive]);
-
-  /**
-   * Initialize AudioContext for mobile compatibility
-   * Must be called during/after user interaction
-   */
-  const initializeAudioContext = async () => {
-    try {
-      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-      
-      if (AudioContextClass) {
-        const audioContext = new AudioContextClass();
-        
-        // Resume if suspended (required on iOS/Android)
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-        }
-        
-        console.log('MeditationScreen AudioContext initialized:', audioContext.state);
-      }
-    } catch (error) {
-      console.warn('AudioContext initialization in MeditationScreen:', error);
-    }
-  };
+  const iframeLoaded = useRef(false);
 
   // Handle completion
   useEffect(() => {
@@ -93,48 +58,53 @@ export function MeditationScreen({
     }
   }, [isComplete, onComplete]);
 
-  // Control music playback based on pause state
-  // Uses postMessage to communicate with SoundCloud iframe - mobile safe
+  // Auto-start meditation when component mounts
   useEffect(() => {
-    if (musicIframeRef.current && currentTrack?.soundcloudUrl) {
-      const widget = musicIframeRef.current.contentWindow;
-      if (widget) {
-        if (isPaused || isMuted) {
-          // Pause music when meditation is paused or muted
-          widget.postMessage('{"method":"pause"}', '*');
-        } else if (isActive) {
-          // Play music when meditation is active and not paused
-          widget.postMessage('{"method":"play"}', '*');
-        }
+    start();
+  }, [start]);
+
+  // Start music when iframe is loaded and meditation is active
+  const handleIframeLoad = () => {
+    iframeLoaded.current = true;
+    // Small delay to ensure iframe is ready
+    setTimeout(() => {
+      if (musicIframeRef.current?.contentWindow && isActive && !isPaused && !isMuted) {
+        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+      }
+    }, 500);
+  };
+
+  // Control music playback based on pause state
+  useEffect(() => {
+    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded.current) {
+      if (isPaused || isMuted) {
+        musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+      } else if (isActive) {
+        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
       }
     }
   }, [isPaused, isActive, isMuted, currentTrack]);
 
-  // Play transition sound on chakra change, then resume music
-  // Uses postMessage API - works correctly on mobile
+  // Play transition sound at end of each chakra (2-3 seconds before change)
+  // Then immediately resume music - no pause between
   useEffect(() => {
     if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
-      // Play transition sound
-      if (transitionIframeRef.current && transitionSound?.soundcloudUrl && !isMuted) {
-        const transitionWidget = transitionIframeRef.current.contentWindow;
-        if (transitionWidget) {
-          // Reset and play transition sound
-          transitionWidget.postMessage('{"method":"seekTo","value":0}', '*');
-          transitionWidget.postMessage('{"method":"play"}', '*');
-          
-          // Stop transition sound after 3 seconds and resume main music
-          setTimeout(() => {
-            transitionWidget.postMessage('{"method":"pause"}', '*');
-            
-            // Resume main music if not paused
-            if (musicIframeRef.current && currentTrack?.soundcloudUrl && !isMuted && isActive && !isPaused) {
-              const musicWidget = musicIframeRef.current.contentWindow;
-              if (musicWidget) {
-                musicWidget.postMessage('{"method":"play"}', '*');
-              }
-            }
-          }, 3000);
-        }
+      // Play transition sound when chakra changes
+      if (transitionIframeRef.current?.contentWindow && transitionSound?.soundcloudUrl && !isMuted) {
+        // Play transition sound
+        transitionIframeRef.current.contentWindow.postMessage('{"method":"seekTo","value":0}', '*');
+        transitionIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        
+        // Stop transition after 2.5 seconds and immediately resume music
+        setTimeout(() => {
+          if (transitionIframeRef.current?.contentWindow) {
+            transitionIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+          }
+          // Immediately resume music - no pause
+          if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && !isMuted && isActive && !isPaused) {
+            musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+          }
+        }, 2500);
       }
     }
     prevChakraIndex.current = currentChakraIndex;
@@ -184,6 +154,7 @@ export function MeditationScreen({
           allow="autoplay"
           src={currentTrack.soundcloudUrl}
           title="Meditation Music"
+          onLoad={handleIframeLoad}
         />
       )}
       
@@ -225,9 +196,14 @@ export function MeditationScreen({
         
         {/* Chakra info */}
         <div className="mt-8 text-center">
-          <h2 className="font-display text-3xl md:text-4xl mb-1" style={{ color: currentChakra.color }}>
-            {currentChakra.name}
-          </h2>
+          <div className="flex items-center justify-center gap-3 mb-1">
+            <span className="text-sm font-medium px-2 py-1 rounded-full bg-white/10" style={{ color: currentChakra.color }}>
+              {currentChakra.number}
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl" style={{ color: currentChakra.color }}>
+              {currentChakra.name}
+            </h2>
+          </div>
           <p className="text-lg text-muted-foreground italic mb-4">
             {currentChakra.sanskritName}
           </p>
@@ -271,7 +247,7 @@ export function MeditationScreen({
             />
           </div>
           <p className="text-xs text-muted-foreground text-center mt-2">
-            Chakra {currentChakraIndex + 1} of 7
+            Чакра {currentChakra.number} от 7
           </p>
         </div>
         

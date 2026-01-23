@@ -95,9 +95,6 @@ export function CompleteScreen({ onHome, onRestart }: CompleteScreenProps) {
           </button>
         </div>
         
-        {/* Namaste */}
-        <p className="mt-12 text-2xl">🙏</p>
-        <p className="text-sm text-muted-foreground/60 mt-2">Namaste</p>
       </div>
     </div>
   );
