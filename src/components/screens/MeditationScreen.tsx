@@ -66,12 +66,18 @@ export function MeditationScreen({
   // Start music when iframe is loaded and meditation is active
   const handleIframeLoad = () => {
     iframeLoaded.current = true;
-    // Small delay to ensure iframe is ready
-    setTimeout(() => {
-      if (musicIframeRef.current?.contentWindow && isActive && !isPaused && !isMuted) {
-        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-      }
-    }, 500);
+    // Multiple attempts to start audio on mobile
+    const tryPlay = (attempt: number) => {
+      if (attempt > 3) return;
+      setTimeout(() => {
+        if (musicIframeRef.current?.contentWindow && isActive && !isPaused && !isMuted) {
+          musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+          // Try again if needed
+          tryPlay(attempt + 1);
+        }
+      }, 500 * attempt);
+    };
+    tryPlay(1);
   };
 
   // Control music playback based on pause state
@@ -85,17 +91,31 @@ export function MeditationScreen({
     }
   }, [isPaused, isActive, isMuted, currentTrack]);
 
-  // Play transition sound at end of each chakra (2-3 seconds before change)
-  // Then immediately resume music - no pause between
+  // Also try to play when component becomes active
+  useEffect(() => {
+    if (isActive && !isPaused && !isMuted && iframeLoaded.current) {
+      const tryPlay = () => {
+        if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl) {
+          musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        }
+      };
+      // Multiple attempts for mobile
+      tryPlay();
+      setTimeout(tryPlay, 1000);
+      setTimeout(tryPlay, 2000);
+    }
+  }, [isActive, isPaused, isMuted, currentTrack]);
+
+  // Play transition sound when chakra changes - 4 seconds duration
   useEffect(() => {
     if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
       // Play transition sound when chakra changes
       if (transitionIframeRef.current?.contentWindow && transitionSound?.soundcloudUrl && !isMuted) {
-        // Play transition sound
+        // Seek to start and play
         transitionIframeRef.current.contentWindow.postMessage('{"method":"seekTo","value":0}', '*');
         transitionIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
         
-        // Stop transition after 2.5 seconds and immediately resume music
+        // Stop transition after 4 seconds and immediately resume music
         setTimeout(() => {
           if (transitionIframeRef.current?.contentWindow) {
             transitionIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
@@ -104,7 +124,7 @@ export function MeditationScreen({
           if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && !isMuted && isActive && !isPaused) {
             musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
           }
-        }, 2500);
+        }, 4000);
       }
     }
     prevChakraIndex.current = currentChakraIndex;

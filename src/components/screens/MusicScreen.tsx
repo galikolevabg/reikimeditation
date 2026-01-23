@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { musicTracks, transitionSounds } from '@/lib/chakras';
-import { ArrowLeft, Check, Play, Pause, Volume2, Bell } from 'lucide-react';
+import { ArrowLeft, Check, Play, Pause, Volume2, Bell, Square } from 'lucide-react';
 
 interface MusicScreenProps {
   onBack: () => void;
@@ -12,63 +12,49 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
   const [selectedTransition, setSelectedTransition] = useState<string>('tibetan-small');
   const [previewingMusic, setPreviewingMusic] = useState<string | null>(null);
   const [previewingTransition, setPreviewingTransition] = useState<string | null>(null);
+  
+  const musicPreviewRef = useRef<HTMLIFrameElement>(null);
+  const transitionPreviewRef = useRef<HTMLIFrameElement>(null);
 
-  /**
-   * Initialize AudioContext on user interaction (required for mobile)
-   * iOS and Android require explicit user gesture to enable audio playback
-   */
-  const initializeAudioOnUserGesture = async () => {
-    try {
-      // Use standard AudioContext or webkit version for iOS compatibility
-      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-      
-      if (AudioContextClass) {
-        const audioContext = new AudioContextClass();
-        
-        // Resume if suspended (required on iOS/Android after user gesture)
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-        }
-        
-        console.log('AudioContext initialized:', audioContext.state);
-      }
-    } catch (error) {
-      console.warn('AudioContext initialization warning (this is normal on some browsers):', error);
-    }
-  };
-
-  /**
-   * Handle Begin Meditation button click
-   * This triggers audio initialization before meditation starts
-   */
-  const handleBeginMeditation = async () => {
-    // Initialize audio on this user interaction before starting meditation
-    await initializeAudioOnUserGesture();
+  const handleMusicSelect = (musicId: string) => {
+    // Stop any current preview
+    stopAllPreviews();
+    setSelectedMusic(musicId);
     
-    // Now proceed with meditation
-    onStart(selectedMusic, selectedTransition);
-  };
-
-  const handlePreview = (musicId: string) => {
-    setPreviewingTransition(null);
-    if (previewingMusic === musicId) {
-      setPreviewingMusic(null);
-    } else {
-      // Initialize audio context on preview interaction as well
-      initializeAudioOnUserGesture();
+    // Auto-preview selected music
+    const track = musicTracks.find(t => t.id === musicId);
+    if (track?.soundcloudUrl) {
       setPreviewingMusic(musicId);
     }
   };
 
-  const handleTransitionPreview = (soundId: string) => {
-    setPreviewingMusic(null);
-    if (previewingTransition === soundId) {
-      setPreviewingTransition(null);
-    } else {
-      // Initialize audio context on preview interaction as well
-      initializeAudioOnUserGesture();
+  const handleTransitionSelect = (soundId: string) => {
+    // Stop any current preview
+    stopAllPreviews();
+    setSelectedTransition(soundId);
+    
+    // Auto-preview selected transition
+    const sound = transitionSounds.find(s => s.id === soundId);
+    if (sound?.soundcloudUrl) {
       setPreviewingTransition(soundId);
     }
+  };
+
+  const stopAllPreviews = () => {
+    setPreviewingMusic(null);
+    setPreviewingTransition(null);
+    // Stop audio via postMessage
+    if (musicPreviewRef.current?.contentWindow) {
+      musicPreviewRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+    }
+    if (transitionPreviewRef.current?.contentWindow) {
+      transitionPreviewRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+    }
+  };
+
+  const handleBeginMeditation = () => {
+    stopAllPreviews();
+    onStart(selectedMusic, selectedTransition);
   };
 
   const previewTrack = previewingMusic ? musicTracks.find(t => t.id === previewingMusic) : null;
@@ -76,10 +62,58 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
 
   return (
     <div className="cosmic-bg min-h-screen flex flex-col p-6">
+      {/* Hidden iframes for audio playback */}
+      {previewTrack?.soundcloudUrl && (
+        <iframe
+          ref={musicPreviewRef}
+          className="hidden"
+          width="100%"
+          height="1"
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          src={previewTrack.soundcloudUrl}
+          title="Music Preview"
+          onLoad={() => {
+            // Auto-play when loaded
+            setTimeout(() => {
+              if (musicPreviewRef.current?.contentWindow) {
+                musicPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+              }
+            }, 300);
+          }}
+        />
+      )}
+      
+      {previewTransitionSound?.soundcloudUrl && (
+        <iframe
+          ref={transitionPreviewRef}
+          className="hidden"
+          width="100%"
+          height="1"
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          src={previewTransitionSound.soundcloudUrl}
+          title="Transition Preview"
+          onLoad={() => {
+            // Auto-play when loaded
+            setTimeout(() => {
+              if (transitionPreviewRef.current?.contentWindow) {
+                transitionPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+              }
+            }, 300);
+          }}
+        />
+      )}
+      
       {/* Header */}
       <header className="flex items-center gap-4 mb-8">
         <button
-          onClick={onBack}
+          onClick={() => {
+            stopAllPreviews();
+            onBack();
+          }}
           className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
         >
           <ArrowLeft className="w-6 h-6" />
@@ -97,12 +131,26 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
 
         <h2 className="font-display text-lg mb-4 text-center">Background Music</h2>
 
+        {/* Now Playing indicator */}
+        {previewingMusic && (
+          <div className="flex items-center justify-center gap-2 mb-4 text-sm text-primary animate-pulse">
+            <Volume2 className="w-4 h-4" />
+            <span>Playing: {musicTracks.find(t => t.id === previewingMusic)?.name}</span>
+            <button 
+              onClick={stopAllPreviews}
+              className="ml-2 p-1 rounded-full bg-white/10 hover:bg-white/20"
+            >
+              <Square className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* Music Options */}
         <div className="space-y-3 mb-8">
           {musicTracks.map((track) => (
             <button
               key={track.id}
-              onClick={() => setSelectedMusic(track.id)}
+              onClick={() => handleMusicSelect(track.id)}
               className={`w-full p-4 rounded-2xl border transition-all text-left flex items-center gap-4
                 ${selectedMusic === track.id
                   ? 'bg-primary/20 border-primary/30 shadow-[0_0_20px_hsla(var(--primary),0.2)]'
@@ -117,24 +165,8 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
               </div>
 
               <div className="flex items-center gap-2">
-                {track.soundcloudUrl && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePreview(track.id);
-                    }}
-                    className={`p-2 rounded-full transition-all
-                      ${previewingMusic === track.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-white/10 hover:bg-white/20'
-                      }`}
-                  >
-                    {previewingMusic === track.id ? (
-                      <Pause className="w-4 h-4" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                  </button>
+                {previewingMusic === track.id && (
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 )}
                 
                 {selectedMusic === track.id && (
@@ -159,12 +191,26 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           Звук при смяна на чакра
         </p>
 
+        {/* Now Playing Transition indicator */}
+        {previewingTransition && (
+          <div className="flex items-center justify-center gap-2 mb-4 text-sm text-accent animate-pulse">
+            <Bell className="w-4 h-4" />
+            <span>Playing: {transitionSounds.find(t => t.id === previewingTransition)?.name}</span>
+            <button 
+              onClick={stopAllPreviews}
+              className="ml-2 p-1 rounded-full bg-white/10 hover:bg-white/20"
+            >
+              <Square className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* Transition Sound Options */}
         <div className="space-y-3 mb-8">
           {transitionSounds.map((sound) => (
             <button
               key={sound.id}
-              onClick={() => setSelectedTransition(sound.id)}
+              onClick={() => handleTransitionSelect(sound.id)}
               className={`w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3
                 ${selectedTransition === sound.id
                   ? 'bg-accent/20 border-accent/30 shadow-[0_0_15px_hsla(var(--accent),0.2)]'
@@ -179,24 +225,8 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
               </div>
 
               <div className="flex items-center gap-2">
-                {sound.soundcloudUrl && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTransitionPreview(sound.id);
-                    }}
-                    className={`p-2 rounded-full transition-all
-                      ${previewingTransition === sound.id
-                        ? 'bg-accent text-accent-foreground'
-                        : 'bg-white/10 hover:bg-white/20'
-                      }`}
-                  >
-                    {previewingTransition === sound.id ? (
-                      <Pause className="w-3 h-3" />
-                    ) : (
-                      <Play className="w-3 h-3" />
-                    )}
-                  </button>
+                {previewingTransition === sound.id && (
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                 )}
                 
                 {selectedTransition === sound.id && (
@@ -221,60 +251,6 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           Find a comfortable position and prepare to relax.
         </p>
       </div>
-
-      {/* Music Preview Player */}
-      {previewTrack?.soundcloudUrl && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-white/10 p-3">
-          <div className="max-w-md mx-auto">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Preview: {previewTrack.name}</span>
-              <button 
-                onClick={() => setPreviewingMusic(null)}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Close
-              </button>
-            </div>
-            <iframe
-              className="w-full rounded-lg"
-              width="100%"
-              height="80"
-              scrolling="no"
-              frameBorder="no"
-              allow="autoplay"
-              src={previewTrack.soundcloudUrl}
-              title="Music Preview"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Transition Sound Preview Player */}
-      {previewTransitionSound?.soundcloudUrl && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-white/10 p-3">
-          <div className="max-w-md mx-auto">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Preview: {previewTransitionSound.name}</span>
-              <button 
-                onClick={() => setPreviewingTransition(null)}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Close
-              </button>
-            </div>
-            <iframe
-              className="w-full rounded-lg"
-              width="100%"
-              height="80"
-              scrolling="no"
-              frameBorder="no"
-              allow="autoplay"
-              src={previewTransitionSound.soundcloudUrl}
-              title="Transition Sound Preview"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
