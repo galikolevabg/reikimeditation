@@ -110,14 +110,41 @@ export function MeditationScreen({
       // Aggressive retry strategy for mobile browsers
       tryPlay();
       const interval = setInterval(tryPlay, 200);
-      setTimeout(() => clearInterval(interval), 3000);
+      setTimeout(() => clearInterval(interval), 5000); // Extended to 5 seconds
       return () => clearInterval(interval);
     }
   }, [hasStarted, isPaused, isMuted, isActive, iframeLoaded]);
+  
+  // Extra aggressive play when both iframe loads AND meditation starts
+  useEffect(() => {
+    if (hasStarted && iframeLoaded && !isMuted && isActive) {
+      // When both conditions are met, force play with extreme persistence
+      const delays = [0, 50, 100, 150, 250, 400, 600, 900, 1300, 1800, 2500];
+      delays.forEach(delay => {
+        setTimeout(() => {
+          if (musicIframeRef.current?.contentWindow && !isPaused && !isMuted) {
+            musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+          }
+        }, delay);
+      });
+    }
+  }, [hasStarted, iframeLoaded, isMuted, isActive, isPaused]);
 
   // Start music when iframe is loaded and meditation is active
   const handleIframeLoad = () => {
     setIframeLoaded(true);
+    // Immediately try to play when iframe loads
+    setTimeout(() => {
+      if (musicIframeRef.current?.contentWindow && hasStarted && !isMuted) {
+        // Multiple immediate play attempts for iOS
+        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 50);
+        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 150);
+        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 300);
+        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 600);
+        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 1000);
+      }
+    }, 100);
   };
 
   // Control music playback based on pause state
@@ -382,7 +409,7 @@ export function MeditationScreen({
       </div>
       
       {/* Start overlay - shown before meditation begins */}
-      {!hasStarted && iframeLoaded.current && (
+      {!hasStarted && iframeLoaded && (
         <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-30">
           <div className="text-center animate-fade-in max-w-md px-6">
             <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6 animate-breathe">
