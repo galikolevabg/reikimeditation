@@ -52,7 +52,7 @@ export function MeditationScreen({
   const transitionIframeRef = useRef<HTMLIFrameElement>(null);
   const prevChakraIndex = useRef(currentChakraIndex);
   const [isMuted, setIsMuted] = useState(false);
-  const iframeLoaded = useRef(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const audioInitialized = useRef(false);
   const startAttempts = useRef(0);
@@ -83,7 +83,7 @@ export function MeditationScreen({
     
     // IMMEDIATE play attempts - no delay, multiple retries for mobile reliability
     const forcePlay = () => {
-      if (musicIframeRef.current?.contentWindow && !isMuted && iframeLoaded.current) {
+      if (musicIframeRef.current?.contentWindow && !isMuted && iframeLoaded) {
         musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
         startAttempts.current++;
       }
@@ -100,7 +100,7 @@ export function MeditationScreen({
 
   // Continuous play enforcement for mobile
   useEffect(() => {
-    if (hasStarted && iframeLoaded.current && !isPaused && !isMuted && isActive && startAttempts.current < 20) {
+    if (hasStarted && iframeLoaded && !isPaused && !isMuted && isActive && startAttempts.current < 20) {
       const tryPlay = () => {
         if (musicIframeRef.current?.contentWindow) {
           musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
@@ -113,16 +113,16 @@ export function MeditationScreen({
       setTimeout(() => clearInterval(interval), 3000);
       return () => clearInterval(interval);
     }
-  }, [hasStarted, isPaused, isMuted, isActive]);
+  }, [hasStarted, isPaused, isMuted, isActive, iframeLoaded]);
 
   // Start music when iframe is loaded and meditation is active
   const handleIframeLoad = () => {
-    iframeLoaded.current = true;
+    setIframeLoaded(true);
   };
 
   // Control music playback based on pause state
   useEffect(() => {
-    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded.current && hasStarted) {
+    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded && hasStarted) {
       if (isPaused || isMuted) {
         // Immediate pause - multiple commands for reliability
         musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
@@ -146,7 +146,7 @@ export function MeditationScreen({
         }, 100);
       }
     }
-  }, [isPaused, isActive, isMuted, currentTrack, hasStarted]);
+  }, [isPaused, isActive, isMuted, currentTrack, hasStarted, iframeLoaded]);
 
   // Play transition sound when chakra changes - 4 seconds duration
   useEffect(() => {
@@ -404,7 +404,7 @@ export function MeditationScreen({
       )}
       
       {/* Loading overlay - shown while iframe loads */}
-      {!iframeLoaded.current && (
+      {!iframeLoaded && (
         <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-30">
           <div className="text-center animate-fade-in">
             <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
