@@ -99,7 +99,7 @@ export const musicTracks = [
     nameBg: 'Чакра Медитация - Сърце на Рейки',
     description: 'Chakra meditation music',
     icon: '💜',
-    soundcloudUrl: '/reikimeditation/music/Chakra%20Meditation%20Music%20-%20The%20Heart%20of%20Reiki.mp3',
+    soundcloudUrl: '/music/Chakra%20Meditation%20Music%20-%20The%20Heart%20of%20Reiki.mp3',
   },
   {
     id: 'new-day',
@@ -107,7 +107,7 @@ export const musicTracks = [
     nameBg: 'Нов Ден Медитация',
     description: '10 minute peaceful meditation',
     icon: '🌅',
-    soundcloudUrl: '/reikimeditation/music/new-day-10-minute-meditation-115787.mp3',
+    soundcloudUrl: '/music/new-day-10-minute-meditation-115787.mp3',
   },
   {
     id: 'reiki-local',
@@ -115,7 +115,7 @@ export const musicTracks = [
     nameBg: 'Рейки Лечебна Музика',
     description: 'Healing energy music',
     icon: '🌟',
-    soundcloudUrl: '/reikimeditation/music/reiki%20music%20results%20on%20SoundCloud-1.mp3',
+    soundcloudUrl: '/music/reiki%20music%20results%20on%20SoundCloud-1.mp3',
   },
   {
     id: 'tibetan-local',
@@ -123,7 +123,7 @@ export const musicTracks = [
     nameBg: 'Тибетска Индийска Медитация',
     description: "Let's fly away meditation",
     icon: '🧘',
-    soundcloudUrl: '/reikimeditation/music/tibetan-indian-meditation-letx27s-fly-away-115567.mp3',
+    soundcloudUrl: '/music/tibetan-indian-meditation-letx27s-fly-away-115567.mp3',
   },
   // Original SoundCloud tracks
   {
@@ -174,21 +174,21 @@ export const transitionSounds = [
     name: 'Tibetan Bowl Soundscape',
     nameBg: 'Тибетска купа звуков пейзаж',
     icon: '🔔',
-    soundcloudUrl: '/reikimeditation/music/soothing-energy-tibetan-bowl-soundscape-384700.mp3',
+    soundcloudUrl: '/music/soothing-energy-tibetan-bowl-soundscape-384700.mp3',
   },
   {
     id: 'white-tara',
     name: 'Tibetan Bowl Therapy',
     nameBg: 'Тибетска купа терапия',
     icon: '🎐',
-    soundcloudUrl: '/reikimeditation/music/healing-tibetan-bowl-therapy-sound-bath-384688.mp3',
+    soundcloudUrl: '/music/healing-tibetan-bowl-therapy-sound-bath-384688.mp3',
   },
   {
     id: 'singing-bowl',
     name: 'Singing Bowl',
     nameBg: 'Пеещa купа',
     icon: '🔊',
-    soundcloudUrl: '/reikimeditation/music/singing_bowl-333759.mp3',
+    soundcloudUrl: '/music/singing_bowl-333759.mp3',
   },
   {
     id: 'none',
