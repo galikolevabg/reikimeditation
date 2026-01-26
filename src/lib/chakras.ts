@@ -98,7 +98,7 @@ export const musicTracks = [
     nameBg: 'Рейки лечебна музика',
     description: 'Emotional & physical healing music',
     icon: '🎵',
-    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1153020259&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+    soundcloudUrl: 'https://www.youtube.com/embed/cLoytewvn0g?autoplay=1&controls=0&loop=1&playlist=cLoytewvn0g',
   },
   {
     id: 'nature',
@@ -106,7 +106,7 @@ export const musicTracks = [
     nameBg: 'Релаксираща природа',
     description: 'Stress relief, healing & meditation',
     icon: '🌿',
-    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/263906303&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+    soundcloudUrl: 'https://www.youtube.com/embed/lFcSrYw-ARY?autoplay=1&controls=0&loop=1&playlist=lFcSrYw-ARY',
   },
   {
     id: 'frequencies',
@@ -114,7 +114,7 @@ export const musicTracks = [
     nameBg: 'Лечебни честоти',
     description: '528Hz Love Frequency',
     icon: '✨',
-    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1201113973&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+    soundcloudUrl: 'https://www.youtube.com/embed/EKTZ151yLnk?autoplay=1&controls=0&loop=1&playlist=EKTZ151yLnk',
   },
   {
     id: 'cleanse',
@@ -122,7 +122,7 @@ export const musicTracks = [
     nameBg: '396Hz Пречистване',
     description: 'Cleanse negative energy, positive vibration',
     icon: '🔮',
-    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1048604626&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+    soundcloudUrl: 'https://www.youtube.com/embed/9vG-37SeGYg?autoplay=1&controls=0&loop=1&playlist=9vG-37SeGYg',
   },
   {
     id: 'silence',
@@ -140,21 +140,21 @@ export const transitionSounds = [
     name: 'Small Tibetan Bowl',
     nameBg: 'Малка тибетска купа',
     icon: '🔔',
-    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/837598315&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+    soundcloudUrl: 'https://www.youtube.com/embed/iJKMKaZNDlk?autoplay=1&controls=0&start=0&end=4',
   },
   {
     id: 'white-tara',
     name: 'White Tara Bowl',
     nameBg: 'Бяла Тара купа',
     icon: '🎐',
-    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/1046631682&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+    soundcloudUrl: 'https://www.youtube.com/embed/R3bjasTTaAU?autoplay=1&controls=0&start=0&end=4',
   },
   {
     id: 'singing-bowl',
     name: 'Singing Bowl Hit',
     nameBg: 'Пеещa купа',
     icon: '🔊',
-    soundcloudUrl: 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/77199537&color=%23aabbcc&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false',
+    soundcloudUrl: 'https://www.youtube.com/embed/9Oe9umzw1Gc?autoplay=1&controls=0&start=0&end=4',
   },
   {
     id: 'none',
