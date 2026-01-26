@@ -48,11 +48,22 @@ export function MeditationScreen({
   
   const { resumeAudioContext } = useAudioContext();
   
+  // Check if URL is MP3 file
+  const isMP3 = (url: string | null | undefined) => {
+    return url?.includes('.mp3') || url?.includes('.wav');
+  };
+
+  const isMusicMP3 = isMP3(currentTrack?.soundcloudUrl);
+  const isTransitionMP3 = isMP3(transitionSound?.soundcloudUrl);
+  
+  const musicAudioRef = useRef<HTMLAudioElement>(null);
   const musicIframeRef = useRef<HTMLIFrameElement>(null);
+  const transitionAudioRef = useRef<HTMLAudioElement>(null);
   const transitionIframeRef = useRef<HTMLIFrameElement>(null);
+  
   const prevChakraIndex = useRef(currentChakraIndex);
   const [isMuted, setIsMuted] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [audioLoaded, setAudioLoaded] = useState(false);
   const audioInitialized = useRef(false);
   const startAttempts = useRef(0);
 
@@ -72,121 +83,132 @@ export function MeditationScreen({
     };
     initAndStart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, []);
 
-  // Continuous play enforcement for mobile
+  // Audio loaded detection
   useEffect(() => {
-    if (iframeLoaded && !isPaused && !isMuted && isActive && startAttempts.current < 20) {
+    if (isMusicMP3) {
+      const handleCanPlay = () => setAudioLoaded(true);
+      const audioEl = musicAudioRef.current;
+      if (audioEl) {
+        audioEl.addEventListener('canplay', handleCanPlay);
+        return () => audioEl.removeEventListener('canplay', handleCanPlay);
+      }
+    } else {
+      // For iframe, use timeout
+      const timer = setTimeout(() => setAudioLoaded(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isMusicMP3]);
+
+  // MP3 playback control
+  useEffect(() => {
+    if (isMusicMP3 && musicAudioRef.current) {
+      if (isPaused || isMuted) {
+        musicAudioRef.current.pause();
+      } else if (isActive) {
+        musicAudioRef.current.play().catch(err => console.log('Play failed:', err));
+      }
+    }
+  }, [isPaused, isActive, isMuted, isMusicMP3]);
+
+  // SoundCloud iframe playback control
+  useEffect(() => {
+    if (!isMusicMP3 && musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && audioLoaded) {
+      if (isPaused || isMuted) {
+        musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+        setTimeout(() => {
+          musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
+        }, 50);
+      } else if (isActive) {
+        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        setTimeout(() => {
+          musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+        }, 50);
+      }
+    }
+  }, [isPaused, isActive, isMuted, currentTrack, audioLoaded, isMusicMP3]);
+
+  // Aggressive play for mobile (SoundCloud only)
+  useEffect(() => {
+    if (!isMusicMP3 && audioLoaded && !isPaused && !isMuted && isActive && startAttempts.current < 20) {
       const tryPlay = () => {
         if (musicIframeRef.current?.contentWindow) {
           musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
           startAttempts.current++;
         }
       };
-      // Aggressive retry strategy for mobile browsers
       tryPlay();
       const interval = setInterval(tryPlay, 200);
-      setTimeout(() => clearInterval(interval), 5000); // Extended to 5 seconds
+      setTimeout(() => clearInterval(interval), 5000);
       return () => clearInterval(interval);
     }
-  }, [isPaused, isMuted, isActive, iframeLoaded]);
-  
-  // Extra aggressive play when both iframe loads AND meditation is active
-  useEffect(() => {
-    if (iframeLoaded && !isMuted && isActive) {
-      // When both conditions are met, force play with extreme persistence
-      const delays = [0, 50, 100, 150, 250, 400, 600, 900, 1300, 1800, 2500];
-      delays.forEach(delay => {
-        setTimeout(() => {
-          if (musicIframeRef.current?.contentWindow && !isPaused && !isMuted) {
-            musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-          }
-        }, delay);
-      });
-    }
-  }, [iframeLoaded, isMuted, isActive, isPaused]);
+  }, [isPaused, isMuted, isActive, audioLoaded, isMusicMP3]);
 
-  // Start music when iframe is loaded and meditation is active
+  // Iframe load handler
   const handleIframeLoad = () => {
-    setIframeLoaded(true);
-    // Immediately try to play when iframe loads
+    setAudioLoaded(true);
     setTimeout(() => {
       if (musicIframeRef.current?.contentWindow && !isMuted) {
-        // Multiple immediate play attempts for iOS
         musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
         setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 50);
         setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 150);
-        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 300);
-        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 600);
-        setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 1000);
       }
     }, 100);
   };
 
-  // Control music playback based on pause state
-  useEffect(() => {
-    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded) {
-      if (isPaused || isMuted) {
-        // Immediate pause - multiple commands for reliability
-        musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
-        setTimeout(() => {
-          musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
-        }, 50);
-        setTimeout(() => {
-          musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
-        }, 100);
-        setTimeout(() => {
-          musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
-        }, 200);
-      } else if (isActive) {
-        startAttempts.current = 0; // Reset for new play attempt
-        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-        setTimeout(() => {
-          musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-        }, 50);
-        setTimeout(() => {
-          musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-        }, 100);
-      }
-    }
-  }, [isPaused, isActive, isMuted, currentTrack, iframeLoaded]);
-
-  // Play transition sound when chakra changes - 4 seconds duration
+  // Play transition sound when chakra changes
   useEffect(() => {
     if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
-      if (transitionIframeRef.current?.contentWindow && transitionSound?.soundcloudUrl && !isMuted && audioInitialized.current) {
+      if (transitionSound?.soundcloudUrl && !isMuted && audioInitialized.current) {
         // Pause background music first
-        if (musicIframeRef.current?.contentWindow) {
+        if (isMusicMP3 && musicAudioRef.current) {
+          musicAudioRef.current.pause();
+        } else if (musicIframeRef.current?.contentWindow) {
           musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
         }
         
-        // Seek to start and play
-        transitionIframeRef.current.contentWindow.postMessage('{"method":"seekTo","value":0}', '*');
-        setTimeout(() => {
-          transitionIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-        }, 50);
-        setTimeout(() => {
-          transitionIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-        }, 100);
-        transitionIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-        
-        // Stop transition after 4 seconds and immediately resume music
-        setTimeout(() => {
-          if (transitionIframeRef.current?.contentWindow) {
-            transitionIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
-          }
-          // Immediately resume music - no pause
-          if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && !isMuted && isActive && !isPaused) {
-            musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-            setTimeout(() => {
-              musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-            }, 50);
-          }
-        }, 4000);
+        // Play transition sound
+        if (isTransitionMP3 && transitionAudioRef.current) {
+          transitionAudioRef.current.currentTime = 0;
+          transitionAudioRef.current.play().catch(err => console.log('Transition play failed:', err));
+          
+          // Stop after 4 seconds
+          setTimeout(() => {
+            if (transitionAudioRef.current) {
+              transitionAudioRef.current.pause();
+              transitionAudioRef.current.currentTime = 0;
+            }
+            // Resume music
+            if (isMusicMP3 && musicAudioRef.current && !isMuted && isActive && !isPaused) {
+              musicAudioRef.current.play().catch(err => console.log('Resume failed:', err));
+            } else if (musicIframeRef.current?.contentWindow && !isMuted && isActive && !isPaused) {
+              musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+            }
+          }, 4000);
+        } else if (transitionIframeRef.current?.contentWindow) {
+          transitionIframeRef.current.contentWindow.postMessage('{"method":"seekTo","value":0}', '*');
+          setTimeout(() => {
+            transitionIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+          }, 50);
+          
+          // Stop after 4 seconds
+          setTimeout(() => {
+            if (transitionIframeRef.current?.contentWindow) {
+              transitionIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+            }
+            // Resume music
+            if (isMusicMP3 && musicAudioRef.current && !isMuted && isActive && !isPaused) {
+              musicAudioRef.current.play().catch(err => console.log('Resume failed:', err));
+            } else if (musicIframeRef.current?.contentWindow && !isMuted && isActive && !isPaused) {
+              musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+            }
+          }, 4000);
+        }
       }
     }
     prevChakraIndex.current = currentChakraIndex;
-  }, [currentChakraIndex, transitionSound, isMuted, currentTrack, isActive, isPaused]);
+  }, [currentChakraIndex, transitionSound, isMuted, currentTrack, isActive, isPaused, isMusicMP3, isTransitionMP3]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -204,18 +226,15 @@ export function MeditationScreen({
   };
 
   const handleResume = async () => {
-    // Critical: Resume AudioContext on iOS before resuming
     await resumeAudioContext();
     resume();
-    // Force play after resume
     setTimeout(() => {
-      if (musicIframeRef.current?.contentWindow && !isMuted) {
+      if (isMusicMP3 && musicAudioRef.current && !isMuted) {
+        musicAudioRef.current.play().catch(err => console.log('Resume play failed:', err));
+      } else if (musicIframeRef.current?.contentWindow && !isMuted) {
         musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
       }
     }, 50);
-    setTimeout(() => {
-      musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-    }, 200);
   };
 
   return (
@@ -225,44 +244,54 @@ export function MeditationScreen({
         background: `radial-gradient(ellipse at center, ${currentChakra.color}15 0%, hsl(240, 30%, 8%) 70%)`,
       }}
     >
-      {/* 
-        Hidden SoundCloud players for audio control
-        
-        MOBILE AUDIO NOTES:
-        - These iframes are controlled via postMessage API (not direct autoplay)
-        - The allow="autoplay" attribute is set, but audio only plays after:
-          1. AudioContext is initialized on user interaction
-          2. postMessage("play") is sent to the iframe
-        - This respects iOS/Android browser audio restrictions
-        - Audio starts only when meditation is active and not paused
-      */}
+      {/* Music player - MP3 or iframe */}
       {currentTrack?.soundcloudUrl && (
-        <iframe
-          ref={musicIframeRef}
-          className="hidden"
-          width="100%"
-          height="1"
-          scrolling="no"
-          frameBorder="no"
-          allow="autoplay; encrypted-media"
-          src={currentTrack.soundcloudUrl}
-          title="Meditation Music"
-          onLoad={handleIframeLoad}
-        />
+        isMusicMP3 ? (
+          <audio
+            ref={musicAudioRef}
+            src={currentTrack.soundcloudUrl}
+            loop
+            preload="auto"
+            className="hidden"
+          />
+        ) : (
+          <iframe
+            ref={musicIframeRef}
+            className="hidden"
+            width="100%"
+            height="1"
+            scrolling="no"
+            frameBorder="no"
+            allow="autoplay; encrypted-media"
+            src={currentTrack.soundcloudUrl}
+            title="Meditation Music"
+            onLoad={handleIframeLoad}
+          />
+        )
       )}
       
+      {/* Transition sound - MP3 or iframe */}
       {transitionSound?.soundcloudUrl && (
-        <iframe
-          ref={transitionIframeRef}
-          className="hidden"
-          width="100%"
-          height="1"
-          scrolling="no"
-          frameBorder="no"
-          allow="autoplay; encrypted-media"
-          src={transitionSound.soundcloudUrl}
-          title="Transition Sound"
-        />
+        isTransitionMP3 ? (
+          <audio
+            ref={transitionAudioRef}
+            src={transitionSound.soundcloudUrl}
+            preload="auto"
+            className="hidden"
+          />
+        ) : (
+          <iframe
+            ref={transitionIframeRef}
+            className="hidden"
+            width="100%"
+            height="1"
+            scrolling="no"
+            frameBorder="no"
+            allow="autoplay; encrypted-media"
+            src={transitionSound.soundcloudUrl}
+            title="Transition Sound"
+          />
+        )
       )}
       
       {/* Sacred geometry background */}
@@ -384,8 +413,8 @@ export function MeditationScreen({
         </div>
       </div>
       
-      {/* Loading overlay - shown while iframe loads */}
-      {!iframeLoaded && (
+      {/* Loading overlay */}
+      {!audioLoaded && (
         <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-30">
           <div className="text-center animate-fade-in">
             <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />

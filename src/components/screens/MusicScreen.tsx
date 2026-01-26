@@ -9,14 +9,19 @@ interface MusicScreenProps {
 }
 
 export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
-  const [selectedMusic, setSelectedMusic] = useState<string>('ambient');
+  const [selectedMusic, setSelectedMusic] = useState<string>('chakra-heart');
   const [selectedTransition, setSelectedTransition] = useState<string>('tibetan-small');
 
   const { resumeAudioContext } = useAudioContext();
   
-  const musicPreviewRef = useRef<HTMLIFrameElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  
+  const isMP3 = (url: string | null) => {
+    return url?.includes('.mp3') || url?.includes('.wav');
+  };
 
   const handleMusicSelect = (musicId: string) => {
     setSelectedMusic(musicId);
@@ -27,56 +32,63 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
   };
 
   const handlePreview = async (url: string) => {
-    // Unlock audio on mobile inside the same user gesture
     await resumeAudioContext();
 
-    // If already playing this url, stop it
     if (currentPreviewUrl === url && isPlaying) {
       stopPreview();
       return;
     }
 
-    // Stop any current preview
     stopPreview();
-
-    // Start new preview
     setCurrentPreviewUrl(url);
     setIsPlaying(true);
 
-    // Wait for iframe to load, then play
     setTimeout(() => {
-      if (musicPreviewRef.current?.contentWindow) {
-        musicPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-        setTimeout(() => {
-          musicPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-        }, 100);
-        setTimeout(() => {
-          musicPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-        }, 300);
+      if (isMP3(url)) {
+        if (audioRef.current) {
+          audioRef.current.play().catch(err => console.log('Play failed:', err));
+        }
+      } else {
+        if (iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        }
       }
-    }, 400);
+    }, 100);
   };
 
   const stopPreview = () => {
     setIsPlaying(false);
-    if (musicPreviewRef.current?.contentWindow) {
-      musicPreviewRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
     }
   };
 
   const handleBeginMeditation = async () => {
     stopPreview();
-    // Critical: Resume AudioContext on iOS before starting meditation
     await resumeAudioContext();
     onStart(selectedMusic, selectedTransition);
   };
 
   return (
     <div className="cosmic-bg min-h-screen flex flex-col p-6">
-      {/* Hidden iframe for audio preview */}
-      {currentPreviewUrl && (
+      {/* Hidden audio for MP3 files */}
+      {currentPreviewUrl && isMP3(currentPreviewUrl) && (
+        <audio
+          ref={audioRef}
+          src={currentPreviewUrl}
+          loop
+          preload="auto"
+        />
+      )}
+      
+      {/* Hidden iframe for SoundCloud */}
+      {currentPreviewUrl && !isMP3(currentPreviewUrl) && (
         <iframe
-          ref={musicPreviewRef}
+          ref={iframeRef}
           className="hidden"
           width="100%"
           height="1"
@@ -103,7 +115,6 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
       </header>
 
       <div className="flex-1 max-w-md mx-auto w-full pb-32 overflow-y-auto">
-        {/* Music Icon */}
         <div className="flex justify-center mb-6">
           <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center animate-breathe">
             <Volume2 className="w-10 h-10 text-primary" />
@@ -112,7 +123,6 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
 
         <h2 className="font-display text-lg mb-4 text-center">Background Music</h2>
 
-        {/* Music Options */}
         <div className="space-y-3 mb-8">
           {musicTracks.map((track) => (
             <div
@@ -160,7 +170,6 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           ))}
         </div>
 
-        {/* Transition Sound Section */}
         <div className="flex justify-center mb-4">
           <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center">
             <Bell className="w-8 h-8 text-accent" />
@@ -172,7 +181,6 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           Звук при смяна на чакра
         </p>
 
-        {/* Transition Sound Options */}
         <div className="space-y-3 mb-8">
           {transitionSounds.map((sound) => (
             <div
@@ -220,7 +228,6 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           ))}
         </div>
 
-        {/* Start Button */}
         <button
           onClick={handleBeginMeditation}
           className="btn-meditation w-full"
