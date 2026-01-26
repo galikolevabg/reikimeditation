@@ -53,6 +53,8 @@ export function MeditationScreen({
   const prevChakraIndex = useRef(currentChakraIndex);
   const [isMuted, setIsMuted] = useState(false);
   const iframeLoaded = useRef(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const audioInitialized = useRef(false);
 
   const getControlledSoundCloudUrl = (url: string) => {
     // Ensure widget supports postMessage control and doesn't try to autoplay on its own.
@@ -70,67 +72,85 @@ export function MeditationScreen({
     }
   }, [isComplete, onComplete]);
 
-  // Auto-start meditation when component mounts
+  // Start meditation manually on button click (required for mobile audio)
+  const handleStartMeditation = async () => {
+    // Critical: Initialize AudioContext on user interaction for iOS
+    await resumeAudioContext();
+    audioInitialized.current = true;
+    setHasStarted(true);
+    start();
+    
+    // Force play music after a short delay
+    setTimeout(() => {
+      if (musicIframeRef.current?.contentWindow && !isMuted) {
+        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+      }
+    }, 500);
+  };
+
+  // Auto-play music when iframe loads (only if meditation has started)
   useEffect(() => {
-    // Critical: Initialize AudioContext immediately for iOS
-    resumeAudioContext().then(() => {
-      start();
-    });
-  }, [start, resumeAudioContext]);
+    if (hasStarted && iframeLoaded.current && !isPaused && !isMuted && isActive) {
+      const tryPlay = () => {
+        if (musicIframeRef.current?.contentWindow) {
+          musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        }
+      };
+      // Multiple attempts for iOS
+      tryPlay();
+      setTimeout(tryPlay, 100);
+      setTimeout(tryPlay, 300);
+      setTimeout(tryPlay, 600);
+    }
+  }, [hasStarted, isPaused, isMuted, isActive]);
 
   // Start music when iframe is loaded and meditation is active
   const handleIframeLoad = () => {
     iframeLoaded.current = true;
-    // Immediately try to play - critical for iOS
-    if (musicIframeRef.current?.contentWindow && isActive && !isPaused && !isMuted) {
+    if (musicIframeRef.current?.contentWindow && hasStarted && isActive && !isPaused && !isMuted) {
       musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-    }
-    // Multiple aggressive retry attempts for iOS
-    const delays = [100, 300, 500, 800, 1200, 1800];
-    delays.forEach(delay => {
+      // Retry attempts
       setTimeout(() => {
-        if (musicIframeRef.current?.contentWindow && isActive && !isPaused && !isMuted) {
-          musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-        }
-      }, delay);
-    });
+        musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+      }, 200);
+    }
   };
 
   // Control music playback based on pause state
   useEffect(() => {
-    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded.current) {
+    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded.current && hasStarted) {
       if (isPaused || isMuted) {
+        // Immediate pause - send multiple times to ensure it works
         musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+        setTimeout(() => {
+          musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
+        }, 50);
+        setTimeout(() => {
+          musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
+        }, 100);
       } else if (isActive) {
         musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
       }
     }
-  }, [isPaused, isActive, isMuted, currentTrack]);
-
-  // Also try to play when component becomes active
-  useEffect(() => {
-    if (isActive && !isPaused && !isMuted && iframeLoaded.current) {
-      const tryPlay = () => {
-        if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl) {
-          musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-        }
-      };
-      // Immediate and multiple aggressive attempts for iOS
-      tryPlay();
-      const delays = [50, 150, 300, 600, 1000, 1500, 2000];
-      delays.forEach(delay => {
-        setTimeout(tryPlay, delay);
-      });
-    }
-  }, [isActive, isPaused, isMuted, currentTrack]);
+  }, [isPaused, isActive, isMuted, currentTrack, hasStarted]);
 
   // Play transition sound when chakra changes - 4 seconds duration
   useEffect(() => {
-    if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
-      // Play transition sound when chakra changes
-      if (transitionIframeRef.current?.contentWindow && transitionSound?.soundcloudUrl && !isMuted) {
+    if (hasStarted && prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
+      if (transitionIframeRef.current?.contentWindow && transitionSound?.soundcloudUrl && !isMuted && audioInitialized.current) {
+        // Pause background music first
+        if (musicIframeRef.current?.contentWindow) {
+          musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+        }
+        
         // Seek to start and play
         transitionIframeRef.current.contentWindow.postMessage('{"method":"seekTo","value":0}', '*');
+        setTimeout(() => {
+          transitionIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+        }, 50);
+        setTimeout(() => {
+          transitionIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+        }, 100);
         transitionIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
         
         // Stop transition after 4 seconds and immediately resume music
@@ -141,12 +161,15 @@ export function MeditationScreen({
           // Immediately resume music - no pause
           if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && !isMuted && isActive && !isPaused) {
             musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+            setTimeout(() => {
+              musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+            }, 50);
           }
         }, 4000);
       }
     }
     prevChakraIndex.current = currentChakraIndex;
-  }, [currentChakraIndex, transitionSound, isMuted, currentTrack, isActive, isPaused]);
+  }, [currentChakraIndex, transitionSound, isMuted, currentTrack, isActive, isPaused, hasStarted]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -170,9 +193,12 @@ export function MeditationScreen({
     // Force play after resume
     setTimeout(() => {
       if (musicIframeRef.current?.contentWindow && !isMuted) {
-        musicIframeRef.current.contentWindow.postMessage('{\"method\":\"play\"}', '*');
+        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
       }
     }, 50);
+    setTimeout(() => {
+      musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+    }, 200);
   };
 
   return (
@@ -340,6 +366,28 @@ export function MeditationScreen({
           </button>
         </div>
       </div>
+      
+      {/* Start overlay - shown before meditation begins */}
+      {!hasStarted && (
+        <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-30">
+          <div className="text-center animate-fade-in max-w-md px-6">
+            <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6 animate-breathe">
+              <Play className="w-12 h-12 text-primary ml-1" />
+            </div>
+            <h2 className="font-display text-3xl mb-4">Готови ли сте?</h2>
+            <p className="text-muted-foreground mb-8">
+              Натиснете Старт, за да започнете медитацията с музика
+            </p>
+            <button
+              onClick={handleStartMeditation}
+              className="btn-meditation text-lg px-8 py-4"
+            >
+              <Play className="w-6 h-6 mr-2 inline" />
+              Старт
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Pause overlay */}
       {isPaused && (

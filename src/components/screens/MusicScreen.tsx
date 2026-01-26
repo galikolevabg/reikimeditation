@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { musicTracks, transitionSounds } from '@/lib/chakras';
-import { ArrowLeft, Check, Play, Pause, Volume2, Bell, Square } from 'lucide-react';
+import { ArrowLeft, Check, Play, Pause, Volume2, Bell } from 'lucide-react';
 import { useAudioContext } from '@/hooks/useAudioContext';
 
 interface MusicScreenProps {
@@ -11,13 +11,12 @@ interface MusicScreenProps {
 export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
   const [selectedMusic, setSelectedMusic] = useState<string>('ambient');
   const [selectedTransition, setSelectedTransition] = useState<string>('tibetan-small');
-  const [previewingMusic, setPreviewingMusic] = useState<string | null>(null);
-  const [previewingTransition, setPreviewingTransition] = useState<string | null>(null);
 
   const { resumeAudioContext } = useAudioContext();
   
   const musicPreviewRef = useRef<HTMLIFrameElement>(null);
-  const transitionPreviewRef = useRef<HTMLIFrameElement>(null);
+  const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const getControlledSoundCloudUrl = (url: string) => {
     // Ensure widget can be controlled via postMessage and does not attempt autoplay by itself.
@@ -30,86 +29,63 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
     return next;
   };
 
-  const handleMusicSelect = async (musicId: string) => {
-    // Stop any current preview
-    stopAllPreviews();
-
-    // Unlock audio on mobile inside the same user gesture
-    await resumeAudioContext();
-
+  const handleMusicSelect = (musicId: string) => {
     setSelectedMusic(musicId);
-    
-    // Auto-preview selected music
-    const track = musicTracks.find(t => t.id === musicId);
-    if (track?.soundcloudUrl) {
-      setPreviewingMusic(musicId);
-      // Force immediate play on iOS - must happen within user interaction
-      setTimeout(() => {
-        if (musicPreviewRef.current?.contentWindow) {
-          // Send play command immediately within user gesture context
-          musicPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-          // Retry after short delay
-          setTimeout(() => {
-            musicPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-          }, 100);
-        }
-      }, 50);
-    }
   };
 
-  const handleTransitionSelect = async (soundId: string) => {
-    // Stop any current preview
-    stopAllPreviews();
+  const handleTransitionSelect = (soundId: string) => {
+    setSelectedTransition(soundId);
+  };
 
+  const handlePreview = async (url: string) => {
     // Unlock audio on mobile inside the same user gesture
     await resumeAudioContext();
 
-    setSelectedTransition(soundId);
-    
-    // Auto-preview selected transition
-    const sound = transitionSounds.find(s => s.id === soundId);
-    if (sound?.soundcloudUrl) {
-      setPreviewingTransition(soundId);
-      // Force immediate play on iOS - must happen within user interaction
-      setTimeout(() => {
-        if (transitionPreviewRef.current?.contentWindow) {
-          // Send play command immediately within user gesture context
-          transitionPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-          // Retry after short delay
-          setTimeout(() => {
-            transitionPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-          }, 100);
-        }
-      }, 50);
+    // If already playing this url, stop it
+    if (currentPreviewUrl === url && isPlaying) {
+      stopPreview();
+      return;
     }
+
+    // Stop any current preview
+    stopPreview();
+
+    // Start new preview
+    setCurrentPreviewUrl(url);
+    setIsPlaying(true);
+
+    // Wait for iframe to load, then play
+    setTimeout(() => {
+      if (musicPreviewRef.current?.contentWindow) {
+        musicPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        setTimeout(() => {
+          musicPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+        }, 100);
+        setTimeout(() => {
+          musicPreviewRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+        }, 300);
+      }
+    }, 400);
   };
 
-  const stopAllPreviews = () => {
-    setPreviewingMusic(null);
-    setPreviewingTransition(null);
-    // Stop audio via postMessage
+  const stopPreview = () => {
+    setIsPlaying(false);
     if (musicPreviewRef.current?.contentWindow) {
       musicPreviewRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
-    }
-    if (transitionPreviewRef.current?.contentWindow) {
-      transitionPreviewRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
     }
   };
 
   const handleBeginMeditation = async () => {
-    stopAllPreviews();
+    stopPreview();
     // Critical: Resume AudioContext on iOS before starting meditation
     await resumeAudioContext();
     onStart(selectedMusic, selectedTransition);
   };
 
-  const previewTrack = previewingMusic ? musicTracks.find(t => t.id === previewingMusic) : null;
-  const previewTransitionSound = previewingTransition ? transitionSounds.find(t => t.id === previewingTransition) : null;
-
   return (
     <div className="cosmic-bg min-h-screen flex flex-col p-6">
-      {/* Hidden iframes for audio playback */}
-      {previewTrack?.soundcloudUrl && (
+      {/* Hidden iframe for audio preview */}
+      {currentPreviewUrl && (
         <iframe
           ref={musicPreviewRef}
           className="hidden"
@@ -118,38 +94,8 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           scrolling="no"
           frameBorder="no"
           allow="autoplay"
-          src={getControlledSoundCloudUrl(previewTrack.soundcloudUrl)}
+          src={getControlledSoundCloudUrl(currentPreviewUrl)}
           title="Music Preview"
-          onLoad={() => {
-            // Auto-play when loaded
-            setTimeout(() => {
-              if (musicPreviewRef.current?.contentWindow) {
-                musicPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-              }
-            }, 300);
-          }}
-        />
-      )}
-      
-      {previewTransitionSound?.soundcloudUrl && (
-        <iframe
-          ref={transitionPreviewRef}
-          className="hidden"
-          width="100%"
-          height="1"
-          scrolling="no"
-          frameBorder="no"
-          allow="autoplay"
-          src={getControlledSoundCloudUrl(previewTransitionSound.soundcloudUrl)}
-          title="Transition Preview"
-          onLoad={() => {
-            // Auto-play when loaded
-            setTimeout(() => {
-              if (transitionPreviewRef.current?.contentWindow) {
-                transitionPreviewRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-              }
-            }, 300);
-          }}
         />
       )}
       
@@ -157,7 +103,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
       <header className="flex items-center gap-4 mb-8">
         <button
           onClick={() => {
-            stopAllPreviews();
+            stopPreview();
             onBack();
           }}
           className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
@@ -177,51 +123,51 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
 
         <h2 className="font-display text-lg mb-4 text-center">Background Music</h2>
 
-        {/* Now Playing indicator */}
-        {previewingMusic && (
-          <div className="flex items-center justify-center gap-2 mb-4 text-sm text-primary animate-pulse">
-            <Volume2 className="w-4 h-4" />
-            <span>Playing: {musicTracks.find(t => t.id === previewingMusic)?.name}</span>
-            <button 
-              onClick={stopAllPreviews}
-              className="ml-2 p-1 rounded-full bg-white/10 hover:bg-white/20"
-            >
-              <Square className="w-3 h-3" />
-            </button>
-          </div>
-        )}
-
         {/* Music Options */}
         <div className="space-y-3 mb-8">
           {musicTracks.map((track) => (
-            <button
+            <div
               key={track.id}
-              onClick={() => handleMusicSelect(track.id)}
               className={`w-full p-4 rounded-2xl border transition-all text-left flex items-center gap-4
                 ${selectedMusic === track.id
                   ? 'bg-primary/20 border-primary/30 shadow-[0_0_20px_hsla(var(--primary),0.2)]'
                   : 'bg-card/50 border-white/10 hover:bg-card/70'
                 }`}
             >
-              <span className="text-2xl">{track.icon}</span>
-              
-              <div className="flex-1">
-                <h3 className="font-medium text-sm">{track.name}</h3>
-                <p className="text-xs text-muted-foreground">{track.description}</p>
-              </div>
+              <button
+                onClick={() => handleMusicSelect(track.id)}
+                className="flex items-center gap-4 flex-1"
+              >
+                <span className="text-2xl">{track.icon}</span>
+                
+                <div className="flex-1 text-left">
+                  <h3 className="font-medium text-sm">{track.name}</h3>
+                  <p className="text-xs text-muted-foreground">{track.description}</p>
+                </div>
+              </button>
 
-              <div className="flex items-center gap-2">
-                {previewingMusic === track.id && (
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <div className="flex items-center gap-2 shrink-0">
+                {track.soundcloudUrl && (
+                  <button
+                    onClick={() => handlePreview(track.soundcloudUrl)}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                    title="Preview"
+                  >
+                    {currentPreviewUrl === track.soundcloudUrl && isPlaying ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4 ml-0.5" />
+                    )}
+                  </button>
                 )}
                 
                 {selectedMusic === track.id && (
-                  <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                     <Check className="w-3 h-3 text-primary-foreground" />
                   </div>
                 )}
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
@@ -237,51 +183,51 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           Звук при смяна на чакра
         </p>
 
-        {/* Now Playing Transition indicator */}
-        {previewingTransition && (
-          <div className="flex items-center justify-center gap-2 mb-4 text-sm text-accent animate-pulse">
-            <Bell className="w-4 h-4" />
-            <span>Playing: {transitionSounds.find(t => t.id === previewingTransition)?.name}</span>
-            <button 
-              onClick={stopAllPreviews}
-              className="ml-2 p-1 rounded-full bg-white/10 hover:bg-white/20"
-            >
-              <Square className="w-3 h-3" />
-            </button>
-          </div>
-        )}
-
         {/* Transition Sound Options */}
         <div className="space-y-3 mb-8">
           {transitionSounds.map((sound) => (
-            <button
+            <div
               key={sound.id}
-              onClick={() => handleTransitionSelect(sound.id)}
               className={`w-full p-3 rounded-xl border transition-all text-left flex items-center gap-3
                 ${selectedTransition === sound.id
                   ? 'bg-accent/20 border-accent/30 shadow-[0_0_15px_hsla(var(--accent),0.2)]'
                   : 'bg-card/50 border-white/10 hover:bg-card/70'
                 }`}
             >
-              <span className="text-xl">{sound.icon}</span>
-              
-              <div className="flex-1">
-                <h3 className="font-medium text-sm">{sound.name}</h3>
-                <p className="text-xs text-muted-foreground">{sound.nameBg}</p>
-              </div>
+              <button
+                onClick={() => handleTransitionSelect(sound.id)}
+                className="flex items-center gap-3 flex-1"
+              >
+                <span className="text-xl">{sound.icon}</span>
+                
+                <div className="flex-1 text-left">
+                  <h3 className="font-medium text-sm">{sound.name}</h3>
+                  <p className="text-xs text-muted-foreground">{sound.nameBg}</p>
+                </div>
+              </button>
 
-              <div className="flex items-center gap-2">
-                {previewingTransition === sound.id && (
-                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              <div className="flex items-center gap-2 shrink-0">
+                {sound.soundcloudUrl && (
+                  <button
+                    onClick={() => handlePreview(sound.soundcloudUrl)}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                    title="Preview"
+                  >
+                    {currentPreviewUrl === sound.soundcloudUrl && isPlaying ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4 ml-0.5" />
+                    )}
+                  </button>
                 )}
                 
                 {selectedTransition === sound.id && (
-                  <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
                     <Check className="w-3 h-3 text-accent-foreground" />
                   </div>
                 )}
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
