@@ -241,7 +241,7 @@ export function MeditationScreen({
           height="1"
           scrolling="no"
           frameBorder="no"
-          allow="autoplay"
+          allow="autoplay; encrypted-media"
           src={getControlledSoundCloudUrl(currentTrack.soundcloudUrl)}
           title="Meditation Music"
           onLoad={handleIframeLoad}
@@ -256,7 +256,7 @@ export function MeditationScreen({
           height="1"
           scrolling="no"
           frameBorder="no"
-          allow="autoplay"
+          allow="autoplay; encrypted-media"
           src={getControlledSoundCloudUrl(transitionSound.soundcloudUrl)}
           title="Transition Sound"
         />

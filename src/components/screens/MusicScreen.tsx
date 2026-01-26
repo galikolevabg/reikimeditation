@@ -93,7 +93,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           height="1"
           scrolling="no"
           frameBorder="no"
-          allow="autoplay"
+          allow="autoplay; encrypted-media"
           src={getControlledSoundCloudUrl(currentPreviewUrl)}
           title="Music Preview"
         />
