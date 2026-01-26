@@ -155,7 +155,7 @@ export function MeditationScreen({
         }, 100);
       }
     }
-  }, [isPaused, isActive, isMuted, currentTrack, hasStarted, iframeLoaded]);
+  }, [isPaused, isActive, isMuted, currentTrack, iframeLoaded]);
 
   // Play transition sound when chakra changes - 4 seconds duration
   useEffect(() => {
@@ -192,7 +192,7 @@ export function MeditationScreen({
       }
     }
     prevChakraIndex.current = currentChakraIndex;
-  }, [currentChakraIndex, transitionSound, isMuted, currentTrack, isActive, isPaused, hasStarted]);
+  }, [currentChakraIndex, transitionSound, isMuted, currentTrack, isActive, isPaused]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
