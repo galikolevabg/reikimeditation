@@ -55,6 +55,7 @@ export function MeditationScreen({
   const iframeLoaded = useRef(false);
   const [hasStarted, setHasStarted] = useState(false);
   const audioInitialized = useRef(false);
+  const startAttempts = useRef(0);
 
   const getControlledSoundCloudUrl = (url: string) => {
     // Ensure widget supports postMessage control and doesn't try to autoplay on its own.
@@ -80,47 +81,50 @@ export function MeditationScreen({
     setHasStarted(true);
     start();
     
-    // Force play music after a short delay
-    setTimeout(() => {
-      if (musicIframeRef.current?.contentWindow && !isMuted) {
+    // IMMEDIATE play attempts - no delay, multiple retries for mobile reliability
+    const forcePlay = () => {
+      if (musicIframeRef.current?.contentWindow && !isMuted && iframeLoaded.current) {
         musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        startAttempts.current++;
       }
-    }, 500);
+    };
+    
+    // Immediate attempts
+    forcePlay();
+    setTimeout(forcePlay, 50);
+    setTimeout(forcePlay, 100);
+    setTimeout(forcePlay, 200);
+    setTimeout(forcePlay, 400);
+    setTimeout(forcePlay, 800);
   };
 
-  // Auto-play music when iframe loads (only if meditation has started)
+  // Continuous play enforcement for mobile
   useEffect(() => {
-    if (hasStarted && iframeLoaded.current && !isPaused && !isMuted && isActive) {
+    if (hasStarted && iframeLoaded.current && !isPaused && !isMuted && isActive && startAttempts.current < 20) {
       const tryPlay = () => {
         if (musicIframeRef.current?.contentWindow) {
           musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+          startAttempts.current++;
         }
       };
-      // Multiple attempts for iOS
+      // Aggressive retry strategy for mobile browsers
       tryPlay();
-      setTimeout(tryPlay, 100);
-      setTimeout(tryPlay, 300);
-      setTimeout(tryPlay, 600);
+      const interval = setInterval(tryPlay, 200);
+      setTimeout(() => clearInterval(interval), 3000);
+      return () => clearInterval(interval);
     }
   }, [hasStarted, isPaused, isMuted, isActive]);
 
   // Start music when iframe is loaded and meditation is active
   const handleIframeLoad = () => {
     iframeLoaded.current = true;
-    if (musicIframeRef.current?.contentWindow && hasStarted && isActive && !isPaused && !isMuted) {
-      musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-      // Retry attempts
-      setTimeout(() => {
-        musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
-      }, 200);
-    }
   };
 
   // Control music playback based on pause state
   useEffect(() => {
     if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded.current && hasStarted) {
       if (isPaused || isMuted) {
-        // Immediate pause - send multiple times to ensure it works
+        // Immediate pause - multiple commands for reliability
         musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
         setTimeout(() => {
           musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
@@ -128,8 +132,18 @@ export function MeditationScreen({
         setTimeout(() => {
           musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
         }, 100);
+        setTimeout(() => {
+          musicIframeRef.current?.contentWindow?.postMessage('{"method":"pause"}', '*');
+        }, 200);
       } else if (isActive) {
+        startAttempts.current = 0; // Reset for new play attempt
         musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+        setTimeout(() => {
+          musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+        }, 50);
+        setTimeout(() => {
+          musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*');
+        }, 100);
       }
     }
   }, [isPaused, isActive, isMuted, currentTrack, hasStarted]);
@@ -368,7 +382,7 @@ export function MeditationScreen({
       </div>
       
       {/* Start overlay - shown before meditation begins */}
-      {!hasStarted && (
+      {!hasStarted && iframeLoaded.current && (
         <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-30">
           <div className="text-center animate-fade-in max-w-md px-6">
             <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6 animate-breathe">
@@ -385,6 +399,16 @@ export function MeditationScreen({
               <Play className="w-6 h-6 mr-2 inline" />
               Старт
             </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Loading overlay - shown while iframe loads */}
+      {!iframeLoaded.current && (
+        <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-30">
+          <div className="text-center animate-fade-in">
+            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Зареждане на аудио...</p>
           </div>
         </div>
       )}
