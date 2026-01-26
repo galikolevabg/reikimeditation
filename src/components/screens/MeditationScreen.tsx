@@ -53,7 +53,6 @@ export function MeditationScreen({
   const prevChakraIndex = useRef(currentChakraIndex);
   const [isMuted, setIsMuted] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
   const audioInitialized = useRef(false);
   const startAttempts = useRef(0);
 
@@ -73,34 +72,17 @@ export function MeditationScreen({
     }
   }, [isComplete, onComplete]);
 
-  // Start meditation manually on button click (required for mobile audio)
-  const handleStartMeditation = async () => {
-    // Critical: Initialize AudioContext on user interaction for iOS
-    await resumeAudioContext();
-    audioInitialized.current = true;
-    setHasStarted(true);
-    start();
-    
-    // IMMEDIATE play attempts - no delay, multiple retries for mobile reliability
-    const forcePlay = () => {
-      if (musicIframeRef.current?.contentWindow && !isMuted && iframeLoaded) {
-        musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-        startAttempts.current++;
-      }
-    };
-    
-    // Immediate attempts
-    forcePlay();
-    setTimeout(forcePlay, 50);
-    setTimeout(forcePlay, 100);
-    setTimeout(forcePlay, 200);
-    setTimeout(forcePlay, 400);
-    setTimeout(forcePlay, 800);
-  };
+  // Auto-start meditation when component mounts
+  useEffect(() => {
+    resumeAudioContext().then(() => {
+      audioInitialized.current = true;
+      start();
+    });
+  }, [start, resumeAudioContext]);
 
   // Continuous play enforcement for mobile
   useEffect(() => {
-    if (hasStarted && iframeLoaded && !isPaused && !isMuted && isActive && startAttempts.current < 20) {
+    if (iframeLoaded && !isPaused && !isMuted && isActive && startAttempts.current < 20) {
       const tryPlay = () => {
         if (musicIframeRef.current?.contentWindow) {
           musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
@@ -113,11 +95,11 @@ export function MeditationScreen({
       setTimeout(() => clearInterval(interval), 5000); // Extended to 5 seconds
       return () => clearInterval(interval);
     }
-  }, [hasStarted, isPaused, isMuted, isActive, iframeLoaded]);
+  }, [isPaused, isMuted, isActive, iframeLoaded]);
   
-  // Extra aggressive play when both iframe loads AND meditation starts
+  // Extra aggressive play when both iframe loads AND meditation is active
   useEffect(() => {
-    if (hasStarted && iframeLoaded && !isMuted && isActive) {
+    if (iframeLoaded && !isMuted && isActive) {
       // When both conditions are met, force play with extreme persistence
       const delays = [0, 50, 100, 150, 250, 400, 600, 900, 1300, 1800, 2500];
       delays.forEach(delay => {
@@ -128,14 +110,14 @@ export function MeditationScreen({
         }, delay);
       });
     }
-  }, [hasStarted, iframeLoaded, isMuted, isActive, isPaused]);
+  }, [iframeLoaded, isMuted, isActive, isPaused]);
 
   // Start music when iframe is loaded and meditation is active
   const handleIframeLoad = () => {
     setIframeLoaded(true);
     // Immediately try to play when iframe loads
     setTimeout(() => {
-      if (musicIframeRef.current?.contentWindow && hasStarted && !isMuted) {
+      if (musicIframeRef.current?.contentWindow && !isMuted) {
         // Multiple immediate play attempts for iOS
         musicIframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
         setTimeout(() => musicIframeRef.current?.contentWindow?.postMessage('{"method":"play"}', '*'), 50);
@@ -149,7 +131,7 @@ export function MeditationScreen({
 
   // Control music playback based on pause state
   useEffect(() => {
-    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded && hasStarted) {
+    if (musicIframeRef.current?.contentWindow && currentTrack?.soundcloudUrl && iframeLoaded) {
       if (isPaused || isMuted) {
         // Immediate pause - multiple commands for reliability
         musicIframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
@@ -177,7 +159,7 @@ export function MeditationScreen({
 
   // Play transition sound when chakra changes - 4 seconds duration
   useEffect(() => {
-    if (hasStarted && prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
+    if (prevChakraIndex.current !== currentChakraIndex && currentChakraIndex > 0) {
       if (transitionIframeRef.current?.contentWindow && transitionSound?.soundcloudUrl && !isMuted && audioInitialized.current) {
         // Pause background music first
         if (musicIframeRef.current?.contentWindow) {
@@ -407,28 +389,6 @@ export function MeditationScreen({
           </button>
         </div>
       </div>
-      
-      {/* Start overlay - shown before meditation begins */}
-      {!hasStarted && iframeLoaded && (
-        <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-30">
-          <div className="text-center animate-fade-in max-w-md px-6">
-            <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6 animate-breathe">
-              <Play className="w-12 h-12 text-primary ml-1" />
-            </div>
-            <h2 className="font-display text-3xl mb-4">Готови ли сте?</h2>
-            <p className="text-muted-foreground mb-8">
-              Натиснете Старт, за да започнете медитацията с музика
-            </p>
-            <button
-              onClick={handleStartMeditation}
-              className="btn-meditation text-lg px-8 py-4"
-            >
-              <Play className="w-6 h-6 mr-2 inline" />
-              Старт
-            </button>
-          </div>
-        </div>
-      )}
       
       {/* Loading overlay - shown while iframe loads */}
       {!iframeLoaded && (
