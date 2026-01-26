@@ -18,17 +18,6 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const getControlledSoundCloudUrl = (url: string) => {
-    // Ensure widget can be controlled via postMessage and does not attempt autoplay by itself.
-    let next = url;
-
-    if (next.includes('auto_play=true')) next = next.replace('auto_play=true', 'auto_play=false');
-    if (!next.includes('auto_play=')) next += (next.includes('?') ? '&' : '?') + 'auto_play=false';
-
-    if (!next.includes('enable_api=true')) next += '&enable_api=true';
-    return next;
-  };
-
   const handleMusicSelect = (musicId: string) => {
     setSelectedMusic(musicId);
   };
@@ -94,7 +83,7 @@ export function MusicScreen({ onBack, onStart }: MusicScreenProps) {
           scrolling="no"
           frameBorder="no"
           allow="autoplay; encrypted-media"
-          src={getControlledSoundCloudUrl(currentPreviewUrl)}
+          src={currentPreviewUrl}
           title="Music Preview"
         />
       )}

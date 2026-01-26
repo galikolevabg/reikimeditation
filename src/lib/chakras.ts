@@ -98,7 +98,7 @@ export const musicTracks = [
     nameBg: 'Рейки лечебна музика',
     description: 'Emotional & physical healing music',
     icon: '🎵',
-    soundcloudUrl: 'https://www.youtube.com/embed/cLoytewvn0g?autoplay=1&controls=0&loop=1&playlist=cLoytewvn0g',
+    soundcloudUrl: 'https://www.mixcloud.com/widget/iframe/?hide_cover=1&feed=%2FRelaxingRecords%2F3-hours-reiki-music-energy-healing-nature-sounds-zen-meditation%2F',
   },
   {
     id: 'nature',
@@ -106,7 +106,7 @@ export const musicTracks = [
     nameBg: 'Релаксираща природа',
     description: 'Stress relief, healing & meditation',
     icon: '🌿',
-    soundcloudUrl: 'https://www.youtube.com/embed/lFcSrYw-ARY?autoplay=1&controls=0&loop=1&playlist=lFcSrYw-ARY',
+    soundcloudUrl: 'https://www.mixcloud.com/widget/iframe/?hide_cover=1&feed=%2FRelaxationAmbientMusic%2Frelaxing-music-for-stress-relief-meditation-music%2F',
   },
   {
     id: 'frequencies',
@@ -114,7 +114,7 @@ export const musicTracks = [
     nameBg: 'Лечебни честоти',
     description: '528Hz Love Frequency',
     icon: '✨',
-    soundcloudUrl: 'https://www.youtube.com/embed/EKTZ151yLnk?autoplay=1&controls=0&loop=1&playlist=EKTZ151yLnk',
+    soundcloudUrl: 'https://www.mixcloud.com/widget/iframe/?hide_cover=1&feed=%2FHealingMusicOfficial%2F528hz-miracle-tone-love-frequency-healing-music%2F',
   },
   {
     id: 'cleanse',
@@ -122,7 +122,7 @@ export const musicTracks = [
     nameBg: '396Hz Пречистване',
     description: 'Cleanse negative energy, positive vibration',
     icon: '🔮',
-    soundcloudUrl: 'https://www.youtube.com/embed/9vG-37SeGYg?autoplay=1&controls=0&loop=1&playlist=9vG-37SeGYg',
+    soundcloudUrl: 'https://www.mixcloud.com/widget/iframe/?hide_cover=1&feed=%2FMeditationRelaxMusic%2F396hz-music-for-meditation-and-healing%2F',
   },
   {
     id: 'silence',
@@ -140,21 +140,21 @@ export const transitionSounds = [
     name: 'Small Tibetan Bowl',
     nameBg: 'Малка тибетска купа',
     icon: '🔔',
-    soundcloudUrl: 'https://www.youtube.com/embed/iJKMKaZNDlk?autoplay=1&controls=0&start=0&end=4',
+    soundcloudUrl: 'https://www.mixcloud.com/widget/iframe/?hide_cover=1&feed=%2FTibetanBowls%2Ftibetan-singing-bowl-sound%2F',
   },
   {
     id: 'white-tara',
     name: 'White Tara Bowl',
     nameBg: 'Бяла Тара купа',
     icon: '🎐',
-    soundcloudUrl: 'https://www.youtube.com/embed/R3bjasTTaAU?autoplay=1&controls=0&start=0&end=4',
+    soundcloudUrl: 'https://www.mixcloud.com/widget/iframe/?hide_cover=1&feed=%2FSingingBowlSounds%2Fhealing-tibetan-bowl-meditation%2F',
   },
   {
     id: 'singing-bowl',
     name: 'Singing Bowl Hit',
     nameBg: 'Пеещa купа',
     icon: '🔊',
-    soundcloudUrl: 'https://www.youtube.com/embed/9Oe9umzw1Gc?autoplay=1&controls=0&start=0&end=4',
+    soundcloudUrl: 'https://www.mixcloud.com/widget/iframe/?hide_cover=1&feed=%2FMeditationSounds%2Fsinging-bowl-meditation-sound%2F',
   },
   {
     id: 'none',
