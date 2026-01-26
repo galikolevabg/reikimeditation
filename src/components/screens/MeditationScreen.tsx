@@ -74,11 +74,14 @@ export function MeditationScreen({
 
   // Auto-start meditation when component mounts
   useEffect(() => {
-    resumeAudioContext().then(() => {
+    const initAndStart = async () => {
+      await resumeAudioContext();
       audioInitialized.current = true;
       start();
-    });
-  }, [start, resumeAudioContext]);
+    };
+    initAndStart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   // Continuous play enforcement for mobile
   useEffect(() => {
